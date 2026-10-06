@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0a1628">
+<title>FOCA · Bem-estar</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<style>
+:root{--d:#0a1628;--m:#0d2240;--s:#103460;--a:#00c2ff;--w:#f0f6ff;--wd:rgba(240,246,255,.6);--b:rgba(0,194,255,.15);--r:#ff4f6d;--gr:#00e5a0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--d);color:var(--w);font-family:'DM Sans',sans-serif;font-size:15px;-webkit-tap-highlight-color:transparent}
+.wrap{max-width:520px;margin:0 auto;padding:18px 16px 40px}
+h1{font-family:'Syne',sans-serif;font-size:22px;margin:4px 0 2px}
+.sub{color:var(--wd);font-size:13px}
+.card{background:var(--m);border:1px solid var(--b);border-radius:16px;padding:14px;margin-top:14px}
+.q{margin-bottom:16px}
+.ql{font-weight:700;margin-bottom:8px}
+.op{display:grid;grid-template-columns:repeat(11,1fr);gap:3px}
+.tr{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+.tr button{background:var(--s);border:2px solid transparent;border-radius:12px;color:var(--w);padding:9px 6px;font-family:inherit;font-weight:700;font-size:14px;cursor:pointer}
+.tr button span{display:block;font-weight:400;font-size:11px;color:var(--wd)}
+.tr button.on{border-color:var(--a);background:rgba(0,194,255,.15)}
+.pre{font-weight:400;font-size:11px;color:var(--wd)}
+.ends{display:flex;justify-content:space-between;font-size:11px;color:var(--wd);margin-top:4px}
+.op button{background:var(--s);border:2px solid transparent;border-radius:9px;color:var(--w);padding:0;font-family:inherit;cursor:pointer;height:44px;touch-action:manipulation}
+.op button b{display:block;font-size:15px}
+.op button span{display:block;font-size:10px;color:var(--wd);margin-top:2px;line-height:1.15}
+.op button.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 22%,var(--s))}
+.op button.on span{color:var(--w)}
+input{width:100%;background:var(--s);border:1px solid var(--b);border-radius:10px;color:var(--w);padding:10px 12px;font-size:15px;font-family:inherit}
+label{display:block;font-size:12px;color:var(--wd);margin:4px 0 4px}
+.row{display:flex;gap:10px}
+.btn{width:100%;margin-top:14px;background:var(--a);color:#03203a;border:0;border-radius:14px;padding:14px;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer}
+.btn:disabled{opacity:.5}
+.msg{margin-top:12px;padding:12px;border-radius:12px;font-size:14px;display:none}
+.msg.ok{display:block;background:rgba(0,229,160,.12);border:1px solid rgba(0,229,160,.4)}
+.msg.err{display:block;background:rgba(255,79,109,.12);border:1px solid rgba(255,79,109,.4)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{padding:6px 4px;border-bottom:1px solid var(--b);text-align:center}
+th{color:var(--wd);font-weight:500;font-size:11px}
+td:first-child,th:first-child{text-align:left}
+.erro{padding:30px 10px;text-align:center;color:var(--wd)}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="erro">A carregar…</div></div>
+<script>
+// Página do nadador: só lê e escreve o seu próprio documento seasons/<época>__bem_<código>.
+// Não tem acesso aos dados da época nem ao resto do FOCA.
+var FB_CONFIG={apiKey:"AIzaSyBA2EdheCvUIjS15fAF9BodI_mjTC4eaZM",authDomain:"foca-natacao.firebaseapp.com",projectId:"foca-natacao",storageBucket:"foca-natacao.firebasestorage.app",messagingSenderId:"1059059053231",appId:"1:1059059053231:web:5b6cdc3338e59a6a3c5a5a"};
+var PERGS=[
+  {k:'sono',  c:'Sono',   lbl:'Como dormiste?',                    a:'Péssimo',    b:'Muito bem'},
+  {k:'pse',   c:'PSE',    lbl:'Esforço do treino (PSE)',           a:'Repouso',    b:'Máximo', pse:1},
+  {k:'fadiga',c:'Cansaço',lbl:'Cansaço',                           a:'Exausta/o',  b:'Nenhum'},
+  {k:'dor',   c:'Dores',  lbl:'Dores musculares',                  a:'Muitas',     b:'Nenhumas'},
+  {k:'stress',c:'Stress', lbl:'Stress (escola, casa…)',            a:'Muito alto', b:'Nenhum'},
+  {k:'humor', c:'Humor',  lbl:'Humor / vontade de treinar',        a:'Muito mau',  b:'Ótimo'}
+];
+var BEMK=['sono','fadiga','dor','stress','humor'];
+// Escala 0–10. Respostas antigas 1–5 (sem esc:10) convertem-se: (v−1)×2,5
+// Cada resposta refere-se a um treino: data + per ('m' AM / 't' PM). ts = data e hora da resposta.
+function cor(n){return n<=2?'#ff4f6d':(n<=4?'#ff8a4c':(n<=6?'#f5c842':(n<=8?'#7bd88f':'#00e5a0')));}
+function corPse(n){return n<=3?'#5ab0ff':(n<=6?'#a78bfa':(n<=8?'#e879f9':'#ff4f6d'));}
+var q=new URLSearchParams(location.search), EP=q.get('e')||'', TK=q.get('t')||'', NOME=q.get('n')||'';
+var db=null, ref=null, ENT=[], V={}, SEL=null, PRE=false;
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function hoje(){return iso(new Date());}
+function diaMenos(n){var d=new Date();d.setDate(d.getDate()-n);return iso(d);}
+function lbl(s){var p=s.split('-');var d=new Date(+p[0],+p[1]-1,+p[2]);return ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d.getDay()]+' '+p[2]+'/'+p[1];}
+function norm(e){var c=JSON.parse(JSON.stringify(e));if(c.esc!==10){BEMK.forEach(function(k){var v=parseFloat(c[k]);if(!isNaN(v))c[k]=Math.max(0,(v-1)*2.5);});c.esc=10;}if(c.per==null)c.per='';return c;}
+function val(e,k){var v=parseFloat(e[k]);return isNaN(v)?null:v;}
+function total(e){var t=0;for(var i=0;i<BEMK.length;i++){var v=val(e,BEMK[i]);if(v==null)return null;t+=v;}return Math.round(t*10)/10;}
+function fmt(n){return n==null?'—':String(n).replace('.',',');}
+function perLbl(p){return p==='m'?'AM':(p==='t'?'PM':'');}
+function opcoes(){var o=[];[0,1,2].forEach(function(n){var d=diaMenos(n),nm=n===0?'Hoje':(n===1?'Ontem':'Anteontem');o.push({d:d,p:'m',l:nm+' AM'});o.push({d:d,p:'t',l:nm+' PM'});});return o;}
+function existe(d,p){return ENT.some(function(e){return e.data===d&&(e.per||'')===p;});}
+function carregar(){
+  var e=ENT.find(function(x){return x.data===SEL.d&&(x.per||'')===SEL.p;});
+  V=e?norm(e):{}; PRE=false;
+  if(!e&&SEL.p==='t'){var am=ENT.find(function(x){return x.data===SEL.d&&x.per==='m';});if(am){am=norm(am);V.sono=am.sono;V.horasSono=am.horasSono;V.esc=10;PRE=true;}}
+}
+function render(){
+  var h='<h1>Olá'+(NOME?' '+esc(NOME):'')+' 👋</h1><div class="sub">Responde <b>depois do treino</b>. Dois treinos no dia = uma resposta para cada. De 0 (pior) a 10 (melhor); na PSE, 10 = esforço máximo.</div>';
+  h+='<div class="card"><div class="ql">A que treino respondes?</div><div class="tr">'+opcoes().map(function(o){var on=o.d===SEL.d&&o.p===SEL.p;return '<button type="button" class="'+(on?'on':'')+'" data-d="'+o.d+'" data-p="'+o.p+'">'+o.l+(existe(o.d,o.p)?' ✓':'')+'<span>'+lbl(o.d)+'</span></button>';}).join('')+'</div></div><div class="card">';
+  PERGS.forEach(function(it){var cur=val(V,it.k), cf=it.pse?corPse:cor;
+    h+='<div class="q"><div class="ql">'+it.lbl+(cur!=null?' · <span style="color:'+cf(cur)+'">'+fmt(cur)+'</span>':'')+(it.k==='sono'&&PRE?' <span class="pre">(da resposta da manhã)</span>':'')+'</div><div class="op">';
+    for(var n=0;n<=10;n++) h+='<button type="button" class="'+(cur===n?'on':'')+'" data-k="'+it.k+'" data-v="'+n+'" style="--c:'+cf(n)+'"><b>'+n+'</b></button>';
+    h+='</div><div class="ends"><span>0 · '+it.a+'</span><span>'+it.b+' · 10</span></div></div>';});
+  h+='<div class="row"><div style="width:40%"><label>Horas de sono</label><input id="hs" type="number" inputmode="decimal" step="0.5" min="0" max="14" value="'+esc(V.horasSono||'')+'"></div><div style="flex:1"><label>Observações</label><input id="nt" value="'+esc(V.nota||'')+'" placeholder="opcional"></div></div>';
+  var pronto=total(V)!=null&&val(V,'pse')!=null;
+  h+='<button class="btn" id="go"'+(pronto?'':' disabled')+'>'+(existe(SEL.d,SEL.p)?'Atualizar resposta':'Enviar')+' · '+lbl(SEL.d)+' '+perLbl(SEL.p)+'</button><div class="msg" id="msg"></div></div>';
+  var ult=ENT.map(norm).sort(function(a,b){var ka=a.data+(a.per==='t'?2:(a.per==='m'?1:0)),kb=b.data+(b.per==='t'?2:(b.per==='m'?1:0));return ka<kb?1:-1;}).slice(0,8);
+  if(ult.length) h+='<div class="card"><div class="ql">As tuas últimas respostas</div><table><tr><th>Treino</th><th>Sono</th><th>PSE</th><th>Bem-estar</th></tr>'+ult.map(function(e){return '<tr><td>'+lbl(e.data)+' '+perLbl(e.per)+'</td><td>'+fmt(val(e,'sono'))+'</td><td>'+fmt(val(e,'pse'))+'</td><td><b>'+fmt(total(e))+'</b>/50</td></tr>';}).join('')+'</table></div>';
+  document.getElementById('app').innerHTML=h;
+  document.querySelectorAll('[data-k]').forEach(function(b){b.addEventListener('click',function(){ler();V[this.getAttribute('data-k')]=parseInt(this.getAttribute('data-v'),10);V.esc=10;render();});});
+  document.querySelectorAll('[data-d]').forEach(function(b){b.addEventListener('click',function(){SEL={d:this.getAttribute('data-d'),p:this.getAttribute('data-p')};carregar();render();});});
+  document.getElementById('go').addEventListener('click',enviar);
+}
+function ler(){var a=document.getElementById('hs'),b=document.getElementById('nt');if(a)V.horasSono=a.value;if(b)V.nota=b.value;}
+function msg(t,ok){var m=document.getElementById('msg');m.className='msg '+(ok?'ok':'err');m.textContent=t;}
+function enviar(){
+  ler(); if(total(V)==null||val(V,'pse')==null) return;
+  var bt=document.getElementById('go'); bt.disabled=true; bt.textContent='A enviar…';
+  var e={data:SEL.d,per:SEL.p,esc:10,horasSono:V.horasSono?parseFloat(V.horasSono):'',nota:String(V.nota||'').slice(0,300),ts:new Date().toISOString()};
+  PERGS.forEach(function(it){e[it.k]=val(V,it.k);});
+  ref.get().then(function(doc){
+    var l=(doc.exists&&doc.data().entradas)||[];
+    l=l.filter(function(x){return !(x.data===e.data&&(x.per||'')===e.per);}); l.push(e);
+    l.sort(function(a,b){return (a.data+(a.per||''))<(b.data+(b.per||''))?-1:1;}); if(l.length>800) l=l.slice(-800);
+    return ref.set({entradas:l,nome:NOME,ts:e.ts},{merge:true}).then(function(){ENT=l;});
+  }).then(function(){render();msg('✅ Obrigado! Resposta do treino '+lbl(e.data)+' '+perLbl(e.per)+' enviada ao treinador.',true);})
+    .catch(function(err){bt.disabled=false;bt.textContent='Tentar de novo';msg('Não foi possível enviar ('+(err&&err.message||err)+'). Verifica a internet e tenta de novo.',false);});
+}
+(function(){
+  if(!EP||!TK||!/^[a-z0-9]{8,40}$/i.test(TK)||!/^\d{4}-\d{4}$/.test(EP)){document.getElementById('app').innerHTML='<div class="erro">Link inválido. Pede ao treinador um link novo.</div>';return;}
+  try{firebase.initializeApp(FB_CONFIG);db=firebase.firestore();}catch(e){document.getElementById('app').innerHTML='<div class="erro">Sem ligação. Tenta mais tarde.</div>';return;}
+  ref=db.collection('seasons').doc(EP+'__bem_'+TK);
+  ref.get().then(function(doc){
+    ENT=(doc.exists&&doc.data().entradas)||[];
+    SEL={d:hoje(),p:new Date().getHours()<14?'m':'t'}; carregar();
+    render();
+  }).catch(function(){render();});
+})();
+</script>
+</body>
+</html>

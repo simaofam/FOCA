@@ -1190,6 +1190,8 @@ tr:last-child td{border-bottom:none;}
     <div class="dsh-actions">
       <div class="dsh-action" data-go="treinos" data-action="new-session"><div class="dsh-action-icon">➕</div><div class="dsh-action-text"><div class="dsh-action-title">Nova Sessão</div><div class="dsh-action-desc">Criar treino</div></div><div class="dsh-action-arrow">→</div></div>
       <div class="dsh-action green" data-action="open-next"><div class="dsh-action-icon">✅</div><div class="dsh-action-text"><div class="dsh-action-title">Marcar Presenças</div><div class="dsh-action-desc">Treino de hoje</div></div><div class="dsh-action-arrow">→</div></div>
+      <div class="dsh-action purple" id="dshKkBE" style="display:none"><div class="dsh-action-icon">💚</div><div class="dsh-action-text"><div class="dsh-action-title">Bem-estar Kika</div><div class="dsh-action-desc" id="dshKkBEdesc">Por preencher hoje</div></div><div class="dsh-action-arrow">→</div></div>
+      <div class="dsh-action blue" id="dshKkBordo" style="display:none"><div class="dsh-action-icon">⏱️</div><div class="dsh-action-text"><div class="dsh-action-title">Bordo de piscina</div><div class="dsh-action-desc">Cronometrar a série</div></div><div class="dsh-action-arrow">→</div></div>
       <div class="dsh-action green" id="dshPSE"><div class="dsh-action-icon">📝</div><div class="dsh-action-text"><div class="dsh-action-title">PSE do Treino</div><div class="dsh-action-desc">Avaliar em 30 s</div></div><div class="dsh-action-arrow">→</div></div>
       <div class="dsh-action purple" data-go="registos"><div class="dsh-action-icon">📋</div><div class="dsh-action-text"><div class="dsh-action-title">Registar Tempos</div><div class="dsh-action-desc">Série principal</div></div><div class="dsh-action-arrow">→</div></div>
       <div class="dsh-action red" data-go="competicoes"><div class="dsh-action-icon">🏆</div><div class="dsh-action-text"><div class="dsh-action-title">Competições</div><div class="dsh-action-desc">Calendário + resultados</div></div><div class="dsh-action-arrow">→</div></div>
@@ -23102,7 +23104,7 @@ function anPrescrever(an,carga,opts){
   // (14) Bem-estar da Kika (do próprio dia ou da véspera)
   var beFlag=null;
   if(ctx.perfil==='kika'&&typeof beAjuste==='function'){
-    try{var kiP=kkInfo(ctx.key), bA=kiP?beAjuste(kiP.nad.id,slot.data):null; beFlag=bA;
+    try{var kiP=kkInfo(ctx.key), bA=kiP?beAjuste(kiP.nad.id,slot.data,slot.per):null; beFlag=bA;
       if(bA){fator=Math.min(fator,bA.fator);if(bA.fatorQual)fatorQual=Math.min(fatorQual,bA.fatorQual);
         if(bA.semAlta){if(AN_HIGH[zona])zona='A1 A2';if(zona2&&AN_HIGH[zona2])zona2=null;}
         razoes.push(bA.txt);}}catch(e){console.warn('bem-estar:',e);}
@@ -24778,6 +24780,10 @@ function dqAbrir(){
 .be-q{margin-bottom:12px}
 .be-ql{font-weight:700;font-size:13px;margin-bottom:6px}
 .be-op{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.be-op11{display:grid;grid-template-columns:repeat(11,1fr);gap:4px}
+.be-op11 .be-b{min-height:40px;padding:0}
+.be-tb-all tbody tr{cursor:pointer}.be-tb-all tbody tr:hover{background:rgba(0,194,255,.06)}.be-tb-all thead th{position:sticky;top:0;background:var(--m)}
+.be-ends{display:flex;justify-content:space-between;font-size:11px;color:var(--wd);margin-top:3px}
 .be-b{background:var(--s);border:2px solid transparent;border-radius:10px;color:var(--w);padding:6px 2px;font-family:inherit;cursor:pointer;min-height:48px}
 .be-b b{display:block;font-size:16px}
 .be-b span{display:block;font-size:10px;color:var(--wd);line-height:1.15;margin-top:1px}
@@ -24842,7 +24848,7 @@ function dqAbrir(){
 </div></div>
 <div class="mo" id="mEpAnt"><div class="md mw" style="width:920px">
   <div class="mt">📅 Comparação com a época anterior</div><div id="epBody"></div>
-  <div class="ma"><button class="btn bg" id="btnEpClose">Fechar</button></div>
+  <div class="ma"><button class="btn bg" id="btnEpClose">Fechar</button><button class="btn bp" id="btnEpPDF">🖨️ PDF</button><button class="btn bp" id="btnEpWord" style="background:#2563eb;color:#fff">📝 Word</button></div>
 </div></div>
 <div class="mo" id="mRel"><div class="md mw" style="width:760px">
   <div class="mt">📑 Relatório</div><div id="rlBody"></div>
@@ -24877,32 +24883,61 @@ function kkPrimeiro(n){return String((n&&n.nome)||'').split(' ')[0];}
 
 // ─── 14 · BEM-ESTAR ───────────────────────────────────────────────────
 var BE_ITENS=[
-  {k:'sono',  c:'Sono', lbl:'Qualidade do sono', esc:['Péssimo','Mau','Razoável','Bom','Excelente']},
-  {k:'fadiga',c:'Fadiga',lbl:'Fadiga',            esc:['Exaustão','Muita','Normal','Pouca','Nenhuma']},
-  {k:'dor',   c:'Dores',lbl:'Dores musculares',  esc:['Muitas','Bastantes','Algumas','Poucas','Nenhumas']},
-  {k:'stress',c:'Stress',lbl:'Stress',            esc:['Muito alto','Alto','Normal','Baixo','Nenhum']},
-  {k:'humor', c:'Humor',lbl:'Humor / motivação', esc:['Muito mau','Mau','Normal','Bom','Excelente']}
+  {k:'sono',  c:'Sono',  lbl:'Qualidade do sono', a:'Péssimo',    b:'Excelente'},
+  {k:'fadiga',c:'Fadiga',lbl:'Fadiga',            a:'Exaustão',   b:'Nenhuma'},
+  {k:'dor',   c:'Dores', lbl:'Dores musculares',  a:'Muitas',     b:'Nenhumas'},
+  {k:'stress',c:'Stress',lbl:'Stress',            a:'Muito alto', b:'Nenhum'},
+  {k:'humor', c:'Humor', lbl:'Humor / motivação', a:'Muito mau',  b:'Excelente'}
 ];
+// PSE do treino (0–10): 2.ª pergunta do questionário. Não entra no total de bem-estar; entra na carga.
+var BE_PSE={k:'pse', c:'PSE', lbl:'PSE do treino (esforço percebido)', a:'Repouso', b:'Máximo'};
+// Ordem no questionário: sono, PSE, fadiga, dores, stress, humor
+var BE_PERGS=[BE_ITENS[0],BE_PSE,BE_ITENS[1],BE_ITENS[2],BE_ITENS[3],BE_ITENS[4]];
+// Escala 0–10 por pergunta (0 = pior · 10 = melhor) → total de bem-estar 0–50.
+// Respostas antigas (1–5, sem esc:10) são convertidas: 1→0 · 2→2,5 · 3→5 · 4→7,5 · 5→10.
+// Cada resposta refere-se a um treino: data + per ('m' = AM · 't' = PM · '' = dia, respostas antigas).
+// ts = data e hora em que foi respondida.
+var BE_MAX=50, BE_VERM=24, BE_AMAR=30;
+var BE_PER={m:'AM',t:'PM','':'Dia'}, BE_PRANK={'':0,m:1,t:2};
+function beCor(n){return n<=2?'#ff4f6d':(n<=4?'#ff8a4c':(n<=6?'#f5c842':(n<=8?'#7bd88f':'#00e5a0')));}
+function bePseCor(n){return n<=3?'#5ab0ff':(n<=6?'#a78bfa':(n<=8?'#e879f9':'#ff4f6d'));}
 var BE_EXT={}; // nadId → entradas lidas da página da nadadora (só leitura)
-var BE_STATE={nad:null, data:null, v:{}};
+var BE_STATE={nad:null, data:null, per:'m', v:{}, ver:'28'};
 
-function beTotal(e){var t=0;for(var i=0;i<BE_ITENS.length;i++){var v=parseInt(e[BE_ITENS[i].k],10);if(!v)return null;t+=v;}return t;}
-// Todas as entradas de um nadador (treinador + nadadora); por dia fica a mais recente
+function beVal(e,k){var v=parseFloat(e[k]);return isNaN(v)?null:v;}
+function beTotal(e){var t=0;for(var i=0;i<BE_ITENS.length;i++){var v=beVal(e,BE_ITENS[i].k);if(v==null)return null;t+=v;}return Math.round(t*10)/10;}
+function beNorm(e){
+  var c=JSON.parse(JSON.stringify(e));
+  if(c.esc!==10){BE_ITENS.forEach(function(it){var v=parseFloat(c[it.k]);if(!isNaN(v))c[it.k]=Math.max(0,(v-1)*2.5);});c.esc=10;}
+  if(c.per==null) c.per='';
+  return c;
+}
+function beChave(e){return e.data+'|'+(BE_PRANK[e.per||'']||0);}
+function beTreinoLbl(e){return anDateLbl(e.data)+(e.per?' '+BE_PER[e.per]:'');}
+function beTsLbl(e){
+  if(!e.ts||String(e.ts).length<16) return '—';
+  var d=new Date(e.ts); if(isNaN(d)) return '—';
+  var iso=isoDate(d), hm=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
+  return anDateLbl(iso)+' '+hm;
+}
+function beAtrasado(e){if(!e.ts||String(e.ts).length<16)return false;var d=new Date(e.ts);if(isNaN(d))return false;return anDateDiff(e.data,isoDate(d))>=1;}
+// Todas as respostas de um nadador (treinador + nadadora), na escala 0–10; por treino fica a mais recente
 function beEntradas(nadId){
   var m={};
-  (D.bemEstar||[]).filter(function(e){return e.nadadorId===nadId;}).concat((BE_EXT[nadId]||[]).map(function(e){var c=JSON.parse(JSON.stringify(e));c.por='nadadora';c.nadadorId=nadId;return c;}))
-    .forEach(function(e){if(!e.data||beTotal(e)==null)return;var o=m[e.data];if(!o||String(e.ts||'')>String(o.ts||''))m[e.data]=e;});
-  return Object.keys(m).sort().map(function(d){return m[d];});
+  (D.bemEstar||[]).filter(function(e){return e.nadadorId===nadId;}).map(beNorm)
+    .concat((BE_EXT[nadId]||[]).map(function(e){var c=beNorm(e);c.por='nadadora';c.nadadorId=nadId;return c;}))
+    .forEach(function(e){if(!e.data||beTotal(e)==null)return;var k=beChave(e),o=m[k];if(!o||String(e.ts||'')>String(o.ts||''))m[k]=e;});
+  return Object.keys(m).sort().map(function(k){return m[k];});
 }
-// Estado de um dia: verde / amarelo / vermelho, com o motivo
+// Estado de uma resposta: verde / amarelo / vermelho, com o motivo
 function beEstado(nadId,e,lista){
   if(!e) return null;
   var tot=beTotal(e), mot=[], st='verde';
-  var baixos=BE_ITENS.filter(function(it){return parseInt(e[it.k],10)<=1;}).map(function(it){return it.lbl.toLowerCase();});
-  var medios=BE_ITENS.filter(function(it){return parseInt(e[it.k],10)===2;}).map(function(it){return it.lbl.toLowerCase();});
-  if(tot<=12||baixos.length){st='vermelho';if(tot<=12)mot.push('total muito baixo');if(baixos.length)mot.push(baixos.join(', ')+' no mínimo');}
-  else if(tot<=15||medios.length){st='amarelo';if(tot<=15)mot.push('total baixo');if(medios.length)mot.push(medios.join(', ')+' em baixo');}
-  // Comparação com a linha de base pessoal (média dos 28 dias anteriores, ≥5 registos)
+  var baixos=BE_ITENS.filter(function(it){return beVal(e,it.k)<=2;}).map(function(it){return it.lbl.toLowerCase();});
+  var medios=BE_ITENS.filter(function(it){var v=beVal(e,it.k);return v>2&&v<=4;}).map(function(it){return it.lbl.toLowerCase();});
+  if(tot<=BE_VERM||baixos.length){st='vermelho';if(tot<=BE_VERM)mot.push('total muito baixo');if(baixos.length)mot.push(baixos.join(', ')+' muito em baixo (≤2)');}
+  else if(tot<=BE_AMAR||medios.length){st='amarelo';if(tot<=BE_AMAR)mot.push('total baixo');if(medios.length)mot.push(medios.join(', ')+' em baixo (3–4)');}
+  // Linha de base pessoal: média das respostas dos 28 dias anteriores (≥5 respostas)
   lista=lista||beEntradas(nadId);
   var base=lista.filter(function(x){var d=anDateDiff(x.data,e.data);return d>=1&&d<=28;}).map(beTotal);
   var media=base.length>=5?anMean(base):null;
@@ -24911,17 +24946,22 @@ function beEstado(nadId,e,lista){
 }
 var BE_COR={verde:'#00e5a0',amarelo:'#f5c842',vermelho:'#ff4f6d'};
 var BE_IC={verde:'🟢',amarelo:'🟡',vermelho:'🔴'};
-// Entrada que vale para um treino num dia: a do próprio dia, senão a da véspera
-function beParaDia(nadId,iso){
-  var l=beEntradas(nadId), e=l.filter(function(x){var d=anDateDiff(x.data,iso);return d>=0&&d<=1;}).pop();
+function beFmtTot(t){return t==null?'—':String(t).replace('.',',');}
+// Resposta que vale para um treino (dia + período): a mais recente ANTES desse treino —
+// a do treino anterior do mesmo dia (AM → ajusta o PM) ou a da véspera (PM → ajusta o dia seguinte).
+function beParaDia(nadId,iso,per){
+  var l=beEntradas(nadId), r=BE_PRANK[per||'t']||2, ontem=anDateAdd(iso,-1);
+  var e=l.filter(function(x){return (x.data===iso&&(x.per===''||(BE_PRANK[x.per]||0)<r))||x.data===ontem;}).pop();
   return e?{e:e, est:beEstado(nadId,e,l)}:null;
 }
+// Última resposta de hoje (para os resumos)
+function beHoje(nadId){var l=beEntradas(nadId),h=mpHojeISO(),e=l.filter(function(x){return x.data===h;}).pop();return e?{e:e,est:beEstado(nadId,e,l)}:null;}
 // Ajuste das propostas (usado em anPrescrever, só no perfil Kika)
-function beAjuste(nadId,iso){
-  var b=beParaDia(nadId,iso); if(!b||!b.est||b.est.st==='verde') return null;
-  var q=(b.e.data===iso?'hoje':'ontem ('+anDateLbl(b.e.data)+')');
-  if(b.est.st==='vermelho') return {fator:0.8, semAlta:true, txt:'Bem-estar 🔴 '+q+' ('+b.est.tot+'/25): '+b.est.motivo+' → volume −20% e sem alta intensidade.'};
-  return {fator:0.9, fatorQual:0.9, txt:'Bem-estar 🟡 '+q+' ('+b.est.tot+'/25): '+b.est.motivo+' → volume −10% e série principal −10%.'};
+function beAjuste(nadId,iso,per){
+  var b=beParaDia(nadId,iso,per); if(!b||!b.est||b.est.st==='verde') return null;
+  var q='após o treino de '+(b.e.data===iso?'hoje':(b.e.data===anDateAdd(iso,-1)?'ontem':anDateLbl(b.e.data)))+(b.e.per?' '+BE_PER[b.e.per]:'');
+  if(b.est.st==='vermelho') return {fator:0.8, semAlta:true, txt:'Bem-estar 🔴 '+q+' ('+beFmtTot(b.est.tot)+'/'+BE_MAX+(b.e.pse!=null?', PSE '+beFmtTot(b.e.pse):'')+'): '+b.est.motivo+' → volume −20% e sem alta intensidade.'};
+  return {fator:0.9, fatorQual:0.9, txt:'Bem-estar 🟡 '+q+' ('+beFmtTot(b.est.tot)+'/'+BE_MAX+(b.e.pse!=null?', PSE '+beFmtTot(b.e.pse):'')+'): '+b.est.motivo+' → volume −10% e série principal −10%.'};
 }
 
 // Leitura (só leitura) das respostas que a nadadora deu na página dela
@@ -24937,51 +24977,129 @@ function beCarregarExterno(nadId,cb){
   }catch(e){console.warn('bem-estar externo:',e);if(cb)cb(false);}
 }
 
-function beAbrir(nadId){
+function bePerAgora(){return new Date().getHours()<14?'m':'t';}
+function beAbrir(nadId,ver){
   var ki=kkInfo(); nadId=nadId||(ki&&ki.nad.id); if(!nadId){toast('Escolha a Kika na barra lateral','error');return;}
-  BE_STATE.nad=nadId; BE_STATE.data=mpHojeISO(); beCarregarForm();
+  BE_STATE.nad=nadId; BE_STATE.data=mpHojeISO(); BE_STATE.per=bePerAgora(); BE_STATE.ver=ver||'28'; beCarregarForm();
   beRender(); openM('mBemEstar');
   beCarregarExterno(nadId,function(ok){if(ok&&gi('mBemEstar').classList.contains('on')){beCarregarForm();beRender();}});
 }
 function beCarregarForm(){
-  var e=beEntradas(BE_STATE.nad).find(function(x){return x.data===BE_STATE.data;});
+  var l=beEntradas(BE_STATE.nad);
+  var e=l.find(function(x){return x.data===BE_STATE.data&&x.per===BE_STATE.per;});
   BE_STATE.v=e?JSON.parse(JSON.stringify(e)):{};
+  BE_STATE.preSono=false;
+  // PM sem resposta: o sono vem da resposta AM desse dia (editável)
+  if(!e&&BE_STATE.per==='t'){var am=l.find(function(x){return x.data===BE_STATE.data&&x.per==='m';});
+    if(am){BE_STATE.v.sono=am.sono;BE_STATE.v.horasSono=am.horasSono;BE_STATE.v.esc=10;BE_STATE.preSono=true;}}
 }
+function beLinhaTabela(x,lista){
+  var es=beEstado(BE_STATE.nad,x,lista), at=beAtrasado(x);
+  return '<tr data-be-dia="'+x.data+'" data-be-per="'+(x.per||'')+'" title="Clique para ver / editar"><td style="white-space:nowrap">'+beTreinoLbl(x)+'</td>'
+    +BE_PERGS.map(function(it){var v=beVal(x,it.k);return '<td style="color:'+(v==null?'inherit':(it===BE_PSE?bePseCor(v):beCor(v)))+'">'+beFmtTot(v)+'</td>';}).join('')
+    +'<td><b>'+beFmtTot(beTotal(x))+'</b> '+BE_IC[es.st]+'</td><td>'+(x.horasSono||'—')+'</td><td>'+(x.por==='nadadora'?'📱':'👤')+'</td>'
+    +'<td style="white-space:nowrap'+(at?';color:#f5c842':'')+'">'+beTsLbl(x)+(at?' ⏰':'')+'</td><td style="white-space:normal;min-width:120px">'+anEsc(x.nota||'')+'</td></tr>';
+}
+function beCabecalho(){return '<thead><tr><th>Treino</th>'+BE_PERGS.map(function(it){return '<th>'+it.c+'</th>';}).join('')+'<th>Bem-estar /'+BE_MAX+'</th><th>Sono (h)</th><th>Por</th><th>Respondido</th><th>Observações</th></tr></thead>';}
 function beRender(){
   var nad=(D.nadadores||[]).find(function(n){return n.id===BE_STATE.nad;})||{};
   gi('beT').textContent='💚 Bem-estar · '+(nad.nome||'');
   var v=BE_STATE.v, lista=beEntradas(BE_STATE.nad);
-  var h='<div class="be-top"><label class="fl" style="margin:0">Dia</label><input type="date" class="fi" id="beData" value="'+BE_STATE.data+'" style="width:auto">'
-    +(v.por==='nadadora'?'<span class="an-sub">📱 respondido pela nadadora</span>':'')+'</div>';
-  BE_ITENS.forEach(function(it){
-    h+='<div class="be-q"><div class="be-ql">'+it.lbl+'</div><div class="be-op">'+it.esc.map(function(t,i){var n=i+1;return '<button type="button" class="be-b'+(parseInt(v[it.k],10)===n?' on':'')+'" data-be-k="'+it.k+'" data-be-v="'+n+'" style="--c:'+['#ff4f6d','#ff8a4c','#f5c842','#7bd88f','#00e5a0'][i]+'"><b>'+n+'</b><span>'+t+'</span></button>';}).join('')+'</div></div>';
-  });
-  h+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px"><div><label class="fl">Horas de sono</label><input class="fi" id="beHoras" type="number" step="0.5" min="0" max="14" value="'+(v.horasSono||'')+'" style="width:110px"></div>'
-    +'<div style="flex:1;min-width:200px"><label class="fl">Nota</label><input class="fi" id="beNota" value="'+anEsc(v.nota||'')+'" placeholder="ex.: dor no ombro direito, exame amanhã"></div></div>';
-  var tot=beTotal(v), est=tot!=null?beEstado(BE_STATE.nad,Object.assign({},v,{data:BE_STATE.data}),lista):null;
-  h+='<div class="be-res" id="beRes">'+(est?BE_IC[est.st]+' <b>'+tot+'/25</b>'+(est.motivo?' · '+anEsc(est.motivo):' · pronto para treinar'):'Responda às 5 perguntas (1 = pior · 5 = melhor).')+'</div>';
-  // Histórico (28 dias)
-  var hist=lista.filter(function(x){return anDateDiff(x.data,mpHojeISO())<=27;});
-  if(hist.length){
-    h+='<div class="ev-sub" style="margin-top:14px">Últimos 28 dias · total (5–25)</div>'+beGrafico(hist,lista);
-    h+='<div style="overflow-x:auto;margin-top:8px"><table class="be-tb"><thead><tr><th>Dia</th>'+BE_ITENS.map(function(it){return '<th>'+it.c+'</th>';}).join('')+'<th>Total</th><th>Sono (h)</th><th></th></tr></thead><tbody>'
-      +hist.slice().reverse().slice(0,10).map(function(x){var es=beEstado(BE_STATE.nad,x,lista);return '<tr><td>'+anDateLbl(x.data)+'</td>'+BE_ITENS.map(function(it){return '<td>'+x[it.k]+'</td>';}).join('')+'<td><b>'+beTotal(x)+'</b> '+BE_IC[es.st]+'</td><td>'+(x.horasSono||'—')+'</td><td title="'+anEsc(x.nota||'')+'">'+(x.por==='nadadora'?'📱':'')+(x.nota?' 📝':'')+'</td></tr>';}).join('')+'</tbody></table></div>';
+  var tab=function(k,t){return '<button class="btn bs '+(BE_STATE.ver===k?'bp':'bg')+'" data-be-ver="'+k+'">'+t+'</button>';};
+  var h='<div class="rl-tabs" style="margin-bottom:12px">'+tab('28','✏️ Preencher')+tab('tabela','📋 Respostas ('+lista.length+')')+tab('epoca','📊 Resumo da época')+'</div>';
+  if(BE_STATE.ver==='tabela'){
+    h+=beTabelaHTML(lista);
+  } else if(BE_STATE.ver==='epoca'){
+    h+=beEpocaHTML(lista);
+  } else {
+    h+='<div class="be-top"><label class="fl" style="margin:0">Treino</label><input type="date" class="fi" id="beData" value="'+BE_STATE.data+'" style="width:auto">'
+      +'<div class="rl-tabs">'+['m','t'].map(function(p){var tem=lista.some(function(x){return x.data===BE_STATE.data&&x.per===p;});return '<button class="btn bs '+(BE_STATE.per===p?'bp':'bg')+'" data-be-per-sel="'+p+'">'+(p==='m'?'☀️ AM':'🌙 PM')+(tem?' ✓':'')+'</button>';}).join('')+'</div>'
+      +(v.por==='nadadora'?'<span class="an-sub">📱 respondido pela nadadora · '+beTsLbl(v)+'</span>':(v.ts?'<span class="an-sub">👤 '+beTsLbl(v)+'</span>':''))+'</div>';
+    h+='<div class="an-sub" style="margin:-4px 0 10px">Responde-se depois do treino. Se houver dois treinos no dia, uma resposta para cada (AM e PM).</div>';
+    BE_PERGS.forEach(function(it){
+      var cur=beVal(v,it.k), cf=it===BE_PSE?bePseCor:beCor;
+      h+='<div class="be-q"><div class="be-ql">'+it.lbl+(cur!=null?' · <span style="color:'+cf(cur)+'">'+beFmtTot(cur)+'</span>':'')+(it.k==='sono'&&BE_STATE.preSono?' <span class="an-sub">(da resposta AM)</span>':'')+'</div><div class="be-op11">';
+      for(var n=0;n<=10;n++) h+='<button type="button" class="be-b'+(cur===n?' on':'')+'" data-be-k="'+it.k+'" data-be-v="'+n+'" style="--c:'+cf(n)+'"><b>'+n+'</b></button>';
+      h+='</div><div class="be-ends"><span>0 · '+it.a+'</span><span>'+it.b+' · 10</span></div></div>';
+    });
+    h+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px"><div><label class="fl">Horas de sono</label><input class="fi" id="beHoras" type="number" step="0.5" min="0" max="14" value="'+(v.horasSono||'')+'" style="width:110px"></div>'
+      +'<div style="flex:1;min-width:200px"><label class="fl">Observações</label><input class="fi" id="beNota" value="'+anEsc(v.nota||'')+'" placeholder="ex.: dor no ombro direito, exame amanhã"></div></div>';
+    var tot=beTotal(v), est=tot!=null?beEstado(BE_STATE.nad,Object.assign({},v,{data:BE_STATE.data,per:BE_STATE.per}),lista):null;
+    h+='<div class="be-res" id="beRes">'+(est?BE_IC[est.st]+' Bem-estar <b>'+beFmtTot(tot)+'/'+BE_MAX+'</b>'+(beVal(v,'pse')!=null?' · PSE <b>'+beFmtTot(beVal(v,'pse'))+'</b>':'')+(est.motivo?' · '+anEsc(est.motivo):' · pronto para treinar'):'Responda às perguntas (0 = pior · 10 = melhor; na PSE, 10 = esforço máximo).')+'</div>';
+    var hist=lista.filter(function(x){return anDateDiff(x.data,mpHojeISO())<=27;});
+    if(hist.length){
+      h+='<div class="ev-sub" style="margin-top:14px">Últimos 28 dias · bem-estar (0–'+BE_MAX+')</div>'+beGrafico(hist,lista,anDateAdd(mpHojeISO(),-27),mpHojeISO());
+      h+='<div style="overflow-x:auto;margin-top:8px"><table class="be-tb be-tb-all">'+beCabecalho()+'<tbody>'+hist.slice().reverse().slice(0,10).map(function(x){return beLinhaTabela(x,lista);}).join('')+'</tbody></table></div>';
+      if(lista.length>10) h+='<div class="an-sub" style="margin-top:4px">Mostra as últimas 10 respostas. Todas estão em <b>📋 Respostas</b>.</div>';
+    }
+    var tok=D.bemEstarLinks&&D.bemEstarLinks[BE_STATE.nad];
+    h+='<div class="be-link"><div style="font-weight:700;margin-bottom:4px">📱 '+anEsc(kkPrimeiro(nad))+' preencher no telemóvel</div>'
+      +(tok?'<div class="an-sub" style="margin-bottom:6px">Link pessoal, válido para a época toda (sem login, só vê o questionário dela):</div><input class="fi" id="beLinkTxt" readonly value="'+anEsc(beLinkUrl(BE_STATE.nad))+'" onclick="this.select()"><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><button class="btn bp bs" id="btnBeCopy">📋 Copiar link</button><button class="btn bg bs" id="btnBeNovo">🔄 Gerar novo (desativa o antigo)</button></div>'
+        :'<div class="an-sub" style="margin-bottom:6px">Gera um link pessoal para a página <b>bemestar.html</b> (tem de estar no GitHub junto ao index.html). Serve para a época toda.</div><button class="btn bp bs" id="btnBeNovo">🔗 Gerar link</button>')+'</div>';
   }
-  // Link da nadadora
-  var tok=D.bemEstarLinks&&D.bemEstarLinks[BE_STATE.nad];
-  h+='<div class="be-link"><div style="font-weight:700;margin-bottom:4px">📱 '+anEsc(kkPrimeiro(nad))+' preencher no telemóvel</div>'
-    +(tok?'<div class="an-sub" style="margin-bottom:6px">Link pessoal (sem login, só vê o questionário dela):</div><input class="fi" id="beLinkTxt" readonly value="'+anEsc(beLinkUrl(BE_STATE.nad))+'" onclick="this.select()"><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><button class="btn bp bs" id="btnBeCopy">📋 Copiar link</button><button class="btn bg bs" id="btnBeNovo">🔄 Gerar novo (desativa o antigo)</button></div>'
-      :'<div class="an-sub" style="margin-bottom:6px">Gera um link pessoal para a página <b>bemestar.html</b> (tem de estar no GitHub junto ao index.html).</div><button class="btn bp bs" id="btnBeNovo">🔗 Gerar link</button>')+'</div>';
   gi('beBody').innerHTML=h;
-  gi('beBody').querySelectorAll('[data-be-k]').forEach(function(b){b.addEventListener('click',function(){BE_STATE.v[this.getAttribute('data-be-k')]=parseInt(this.getAttribute('data-be-v'),10);BE_STATE.v.horasSono=gi('beHoras').value;BE_STATE.v.nota=gi('beNota').value;beRender();});});
-  gi('beData').addEventListener('change',function(){BE_STATE.data=this.value||mpHojeISO();beCarregarForm();beRender();});
+  gi('btnBeSave').style.display=BE_STATE.ver==='28'?'':'none';
+  var fm=gi('beFiltroMes'); if(fm) fm.addEventListener('change',function(){BE_STATE.mes=this.value;beRender();});
+  gi('beBody').querySelectorAll('[data-be-dia]').forEach(function(tr){tr.addEventListener('click',function(){BE_STATE.data=this.getAttribute('data-be-dia');BE_STATE.per=this.getAttribute('data-be-per')||'m';BE_STATE.ver='28';beCarregarForm();beRender();});});
+  gi('beBody').querySelectorAll('[data-be-per-sel]').forEach(function(b){b.addEventListener('click',function(){BE_STATE.per=this.getAttribute('data-be-per-sel');beCarregarForm();beRender();});});
+  gi('beBody').querySelectorAll('[data-be-ver]').forEach(function(b){b.addEventListener('click',function(){beLerCampos();BE_STATE.ver=this.getAttribute('data-be-ver');beRender();});});
+  gi('beBody').querySelectorAll('[data-be-k]').forEach(function(b){b.addEventListener('click',function(){beLerCampos();BE_STATE.v[this.getAttribute('data-be-k')]=parseInt(this.getAttribute('data-be-v'),10);BE_STATE.v.esc=10;beRender();});});
+  if(gi('beData')) gi('beData').addEventListener('change',function(){BE_STATE.data=this.value||mpHojeISO();beCarregarForm();beRender();});
+  bon('btnBeXls',function(){beExportar(lista,nad);});
   bon('btnBeCopy',function(){var i=gi('beLinkTxt');i.select();try{navigator.clipboard.writeText(i.value).then(function(){toast('Link copiado','success');},function(){document.execCommand('copy');toast('Link copiado','success');});}catch(e){document.execCommand('copy');toast('Link copiado','success');}});
   bon('btnBeNovo',function(){
-    if(tok&&!confirm('Gerar um link novo? O antigo deixa de funcionar e as respostas dadas por ele deixam de aparecer aqui.')) return;
+    var tk=D.bemEstarLinks&&D.bemEstarLinks[BE_STATE.nad];
+    if(tk&&!confirm('Gerar um link novo? O antigo deixa de funcionar e as respostas dadas por ele deixam de aparecer aqui.')) return;
     if(!D.bemEstarLinks) D.bemEstarLinks={};
     D.bemEstarLinks[BE_STATE.nad]=Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-4)+Math.random().toString(36).slice(2,6);
     save(); BE_EXT[BE_STATE.nad]=[]; beRender(); toast('Link criado — envie-o à nadadora','success');
   });
+}
+function beLerCampos(){if(gi('beHoras'))BE_STATE.v.horasSono=gi('beHoras').value;if(gi('beNota'))BE_STATE.v.nota=gi('beNota').value;}
+// Resumo da época: indicadores, gráfico e médias por mês
+function beEpocaHTML(lista){
+  if(!lista.length) return '<div class="an-empty">Ainda não há respostas nesta época.</div>';
+  var est=lista.map(function(x){return beEstado(BE_STATE.nad,x,lista);});
+  var nV=est.filter(function(e){return e.st==='vermelho';}).length, nA=est.filter(function(e){return e.st==='amarelo';}).length;
+  var nN=lista.filter(function(x){return x.por==='nadadora';}).length, nAt=lista.filter(beAtrasado).length;
+  var pses=lista.map(function(x){return beVal(x,'pse');}).filter(function(x){return x!=null;});
+  var h='<div class="an-kpis" style="margin-bottom:10px"><div class="an-kpi"><div class="an-kl">Respostas</div><div class="an-kv">'+lista.length+'</div><div class="an-sub">'+anDateLbl(lista[0].data)+' a '+anDateLbl(lista[lista.length-1].data)+' · 📱 '+nN+' pela nadadora'+(nAt?' · ⏰ '+nAt+' respondidas no(s) dia(s) seguinte(s)':'')+'</div></div>'
+    +'<div class="an-kpi"><div class="an-kl">Bem-estar médio</div><div class="an-kv">'+beFmtTot(anMean(lista.map(beTotal)).toFixed(1))+' / '+BE_MAX+'</div></div>'
+    +'<div class="an-kpi"><div class="an-kl">PSE média</div><div class="an-kv">'+(pses.length?beFmtTot(anMean(pses).toFixed(1)):'—')+'</div><div class="an-sub">'+pses.length+' treinos com PSE</div></div>'
+    +'<div class="an-kpi"><div class="an-kl">Respostas 🟡 · 🔴</div><div class="an-kv">'+nA+' · '+nV+'</div></div>'
+    +'<div class="an-kpi"><div class="an-kl">Sono médio</div><div class="an-kv">'+(function(){var hs=lista.map(function(x){return parseFloat(x.horasSono);}).filter(function(x){return !isNaN(x);});return hs.length?beFmtTot(anMean(hs).toFixed(1))+' h':'—';})()+'</div></div></div>';
+  h+='<div class="ev-sub">Bem-estar por treino (0–'+BE_MAX+')</div>'+beGrafico(lista,lista,lista[0].data,mpHojeISO()>lista[lista.length-1].data?mpHojeISO():lista[lista.length-1].data);
+  var meses={}; lista.forEach(function(x){var k=x.data.slice(0,7);(meses[k]=meses[k]||[]).push(x);});
+  h+='<div class="ev-sub" style="margin-top:12px">Médias por mês</div><div style="overflow-x:auto"><table class="be-tb"><thead><tr><th>Mês</th><th>Respostas</th>'+BE_PERGS.map(function(it){return '<th>'+it.c+'</th>';}).join('')+'<th>Bem-estar</th></tr></thead><tbody>'
+    +Object.keys(meses).sort().reverse().map(function(k){var l=meses[k],p=k.split('-');return '<tr><td>'+RL_MESES[parseInt(p[1],10)-1]+' '+p[0]+'</td><td>'+l.length+'</td>'+BE_PERGS.map(function(it){var vs=l.map(function(x){return beVal(x,it.k);}).filter(function(x){return x!=null;});if(!vs.length)return '<td>—</td>';var m=anMean(vs);return '<td style="color:'+(it===BE_PSE?bePseCor(m):beCor(m))+'">'+beFmtTot(m.toFixed(1))+'</td>';}).join('')+'<td><b>'+beFmtTot(anMean(l.map(beTotal)).toFixed(1))+'</b></td></tr>';}).join('')+'</tbody></table></div>';
+  return h;
+}
+// Separador "Respostas": todas as respostas da época numa tabela (filtro por mês, clicar numa linha para editar)
+function beTabelaHTML(lista){
+  if(!lista.length) return '<div class="an-empty">Ainda não há respostas nesta época.</div>';
+  var meses=lista.map(function(x){return x.data.slice(0,7);}).filter(function(x,i,a){return a.indexOf(x)===i;}).sort().reverse();
+  var f=BE_STATE.mes||'', l=f?lista.filter(function(x){return x.data.slice(0,7)===f;}):lista;
+  var h='<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px"><select class="fse" id="beFiltroMes" style="width:auto"><option value="">Toda a época ('+lista.length+')</option>'
+    +meses.map(function(m){var p=m.split('-');return '<option value="'+m+'"'+(m===f?' selected':'')+'>'+RL_MESES[parseInt(p[1],10)-1]+' '+p[0]+'</option>';}).join('')+'</select>'
+    +'<button class="btn bp bs" id="btnBeXls">📥 Exportar Excel</button></div>';
+  h+='<div style="overflow:auto;max-height:60vh"><table class="be-tb be-tb-all">'+beCabecalho()+'<tbody>'+l.slice().reverse().map(function(x){return beLinhaTabela(x,lista);}).join('')+'</tbody></table></div>';
+  h+='<div class="an-sub" style="margin-top:6px">0 = pior · 10 = melhor (PSE: 10 = esforço máximo) · 📱 nadadora · 👤 treinador · ⏰ respondida num dia posterior ao treino. Clique numa linha para ver ou corrigir.</div>';
+  return h;
+}
+function beExportar(lista,nad){
+  var rows=lista.map(function(x){var es=beEstado(BE_STATE.nad,x,lista),r={'Data do treino':x.data,'Treino':BE_PER[x.per||'']};
+    BE_PERGS.forEach(function(it){r[it.c]=beVal(x,it.k);});
+    r['Bem-estar (0-50)']=beTotal(x);r.Estado=es.st;r['Horas de sono']=x.horasSono===''||x.horasSono==null?'':parseFloat(x.horasSono);
+    r['Respondido por']=x.por==='nadadora'?'nadadora':'treinador';
+    var d=x.ts&&String(x.ts).length>=16?new Date(x.ts):null;r['Respondido em']=d&&!isNaN(d)?isoDate(d)+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2):'';
+    r['Observações']=x.nota||'';return r;});
+  var nome='bem_estar_'+String(kkPrimeiro(nad)||'nadador').toLowerCase()+'_'+String(cs).replace('/','-');
+  try{
+    if(typeof XLSX!=='undefined'){var ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Bem-estar');XLSX.writeFile(wb,nome+'.xlsx');toast('Excel exportado','success');return;}
+  }catch(e){console.warn('xlsx:',e);}
+  var cols=Object.keys(rows[0]||{Data:''}), csv='﻿'+cols.join(';')+'\n'+rows.map(function(r){return cols.map(function(c){return '"'+String(r[c]==null?'':r[c]).replace(/"/g,'""')+'"';}).join(';');}).join('\n');
+  var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})); a.download=nome+'.csv'; document.body.appendChild(a); a.click(); a.remove();
+  toast('Exportado (CSV)','success');
 }
 function beLinkUrl(nadId){
   var nad=(D.nadadores||[]).find(function(n){return n.id===nadId;})||{};
@@ -24989,29 +25107,36 @@ function beLinkUrl(nadId){
   return base+'bemestar.html?e='+encodeURIComponent(fbDocId(cs))+'&t='+encodeURIComponent(D.bemEstarLinks[nadId])+'&n='+encodeURIComponent(kkPrimeiro(nad));
 }
 function beGuardar(){
-  var v=BE_STATE.v; v.horasSono=gi('beHoras').value; v.nota=gi('beNota').value;
-  if(beTotal(v)==null){toast('Responda às 5 perguntas','error');return;}
+  beLerCampos(); var v=BE_STATE.v;
+  if(beTotal(v)==null){toast('Responda às perguntas de bem-estar','error');return;}
   if(!D.bemEstar) D.bemEstar=[];
-  var ex=D.bemEstar.find(function(e){return e.nadadorId===BE_STATE.nad&&e.data===BE_STATE.data;});
-  var o={nadadorId:BE_STATE.nad, data:BE_STATE.data, horasSono:v.horasSono?parseFloat(v.horasSono):'', nota:v.nota||'', ts:new Date().toISOString(), por:'treinador'};
-  BE_ITENS.forEach(function(it){o[it.k]=parseInt(v[it.k],10);});
+  var ex=D.bemEstar.find(function(e){return e.nadadorId===BE_STATE.nad&&e.data===BE_STATE.data&&(e.per||'')===BE_STATE.per;});
+  var o={nadadorId:BE_STATE.nad, data:BE_STATE.data, per:BE_STATE.per, esc:10, pse:beVal(v,'pse'), horasSono:v.horasSono?parseFloat(v.horasSono):'', nota:v.nota||'', ts:new Date().toISOString(), por:'treinador'};
+  BE_ITENS.forEach(function(it){o[it.k]=beVal(v,it.k);});
   if(ex) Object.assign(ex,o); else {o.id=gid();D.bemEstar.push(o);}
-  save(); toast('Bem-estar guardado','success'); closeM('mBemEstar'); kkPainel();
+  save(); toast('Bem-estar guardado ('+anDateLbl(BE_STATE.data)+' '+BE_PER[BE_STATE.per]+')','success'); closeM('mBemEstar'); kkPainel(); try{kkDashAtalhos();}catch(e){}
   if(typeof rAnalise==='function'&&gi('pg-analise')&&gi('pg-analise').classList.contains('on')) try{rAnalise();}catch(e){}
 }
-function beGrafico(hist,lista){
-  var W=720,H=150,L=34,R=12,T=10,B=22, n=hist.length;
-  var d0=anDateAdd(mpHojeISO(),-27), span=27;
-  var xs=function(d){return L+(anDateDiff(d0,d)/span)*(W-L-R);};
-  var ys=function(v){return T+(1-(v-5)/20)*(H-T-B);};
-  var g='<svg viewBox="0 0 '+W+' '+H+'" class="ev-svg" role="img" aria-label="Bem-estar total por dia">';
-  [5,10,15,20,25].forEach(function(v){g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+ys(v)+'" y2="'+ys(v)+'" class="ev-grid"/><text x="'+(L-5)+'" y="'+(ys(v)+3)+'" class="ev-ax" text-anchor="end">'+v+'</text>';});
-  g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+ys(12.5)+'" y2="'+ys(12.5)+'" stroke="#ff4f6d" stroke-dasharray="4 4" stroke-width="1" opacity=".6"/>';
-  g+='<text x="'+L+'" y="'+(H-5)+'" class="ev-ax">'+anDateLbl(d0)+'</text><text x="'+(W-R)+'" y="'+(H-5)+'" class="ev-ax" text-anchor="end">hoje</text>';
-  var bw=Math.max(6,Math.min(16,(W-L-R)/30));
-  hist.forEach(function(x){var t=beTotal(x),es=beEstado(x.nadadorId||BE_STATE.nad,x,lista),X=xs(x.data);
-    g+='<g><rect x="'+(X-bw/2)+'" y="'+ys(t)+'" width="'+bw+'" height="'+Math.max(2,ys(5)-ys(t))+'" rx="3" fill="'+BE_COR[es.st]+'" opacity=".85"/><title>'+anEsc(anDateLbl(x.data)+' · '+t+'/25'+(es.motivo?' · '+es.motivo:''))+'</title></g>';});
+function beGrafico(hist,lista,d0,d1){
+  var W=720,H=150,L=34,R=12,T=10,B=22;
+  var span=Math.max(1,anDateDiff(d0,d1)+1);
+  var xs=function(e){return L+8+((anDateDiff(d0,e.data)+(e.per==='t'?0.55:(e.per==='m'?0.05:0.3)))/span)*(W-L-R-16);};
+  var ys=function(v){return T+(1-v/BE_MAX)*(H-T-B);};
+  var g='<svg viewBox="0 0 '+W+' '+H+'" class="ev-svg" role="img" aria-label="Bem-estar por treino">';
+  [0,10,20,30,40,50].forEach(function(v){g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+ys(v)+'" y2="'+ys(v)+'" class="ev-grid"/><text x="'+(L-5)+'" y="'+(ys(v)+3)+'" class="ev-ax" text-anchor="end">'+v+'</text>';});
+  g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+ys(BE_VERM)+'" y2="'+ys(BE_VERM)+'" stroke="#ff4f6d" stroke-dasharray="4 4" stroke-width="1" opacity=".6"/>';
+  g+='<text x="'+L+'" y="'+(H-5)+'" class="ev-ax">'+anDateLbl(d0)+'</text><text x="'+(W-R)+'" y="'+(H-5)+'" class="ev-ax" text-anchor="end">'+(d1===mpHojeISO()?'hoje':anDateLbl(d1))+'</text>';
+  var bw=Math.max(2,Math.min(12,(W-L-R)/span*0.38));
+  hist.forEach(function(x){var t=beTotal(x),es=beEstado(x.nadadorId||BE_STATE.nad,x,lista),X=xs(x)+bw/2;
+    g+='<g><rect x="'+(X-bw/2)+'" y="'+ys(t)+'" width="'+bw+'" height="'+Math.max(2,ys(0)-ys(t))+'" rx="'+Math.min(3,bw/2)+'" fill="'+BE_COR[es.st]+'" opacity=".85"/><title>'+anEsc(beTreinoLbl(x)+' · bem-estar '+beFmtTot(t)+'/'+BE_MAX+(x.pse!=null?' · PSE '+beFmtTot(x.pse):'')+(es.motivo?' · '+es.motivo:''))+'</title></g>';});
   return g+'</svg>';
+}
+
+// ─── Ações rápidas no Dashboard (só com a Kika escolhida) ────────────────
+function kkDashAtalhos(){
+  var ki=null; try{ki=kkInfo();}catch(e){}
+  ['dshKkBE','dshKkBordo'].forEach(function(id){var el=gi(id);if(el)el.style.display=ki?'':'none';});
+  if(ki){var d=gi('dshKkBEdesc');if(d){var b=beHoje(ki.nad.id);d.textContent=b?BE_IC[b.est.st]+' '+BE_PER[b.e.per]+': '+beFmtTot(b.est.tot)+'/'+BE_MAX+(b.e.pse!=null?' · PSE '+beFmtTot(b.e.pse):''):'Por preencher hoje';}}
 }
 
 // ─── 13 · CARGA INDIVIDUAL ────────────────────────────────────────────
@@ -25038,8 +25163,16 @@ function kkCargaDias(ki,ate,nDias){
     var c=rpe*(parseInt(a.duracaoMin,10)||90), k=a.sessaoId||('r_'+a.registoId);
     if(!porTreino[k]||porTreino[k].c<c) porTreino[k]={c:c,d:a.data,rpe:rpe};
   });
-  Object.keys(porTreino).forEach(function(k){var t=porTreino[k];dias[t.d].srpe+=t.c;dias[t.d].pse.push(t.rpe);});
+  // PSE do questionário de bem-estar (por treino AM/PM): conta quando o treino não tem avaliação com PSE
   var lista=beEntradas(nadId);
+  lista.forEach(function(e){
+    var p=beVal(e,'pse'); if(p==null||!dias[e.data]) return;
+    var ses=sess.filter(function(s){return s.data===e.data&&vistos[s.id]&&(!e.per||((s.hora||'12:00')<'14:00'?'m':'t')===e.per);})[0];
+    var k=ses?ses.id:('q_'+e.data+'_'+e.per); if(porTreino[k]) return;
+    var dur=90; try{var dd=anDinDia(ki.key,e.data),dp=dd&&anDinPer(dd,e.per||'m');if(dp&&dp.duracao)dur=dp.duracao;}catch(x){}
+    porTreino[k]={c:p*dur,d:e.data,rpe:p,q:1};
+  });
+  Object.keys(porTreino).forEach(function(k){var t=porTreino[k];dias[t.d].srpe+=t.c;dias[t.d].pse.push(t.rpe);});
   lista.forEach(function(e){if(dias[e.data])dias[e.data].be={tot:beTotal(e),est:beEstado(nadId,e,lista)};});
   return Object.keys(dias).sort().map(function(d){return dias[d];});
 }
@@ -25116,9 +25249,9 @@ function kkCargaRender(ki){
   h+='<div class="ev-sub">Volume por semana (realizado)</div>'+kkBarras(sem,'vol',km,'#00c2ff','Volume');
   h+='<div class="ev-sub" style="margin-top:10px">Carga interna por semana (PSE × minutos)</div>'+kkBarras(sem,'srpe',ua,'#a78bfa','Carga interna');
   h+='<div style="overflow-x:auto;margin-top:12px"><table class="be-tb"><thead><tr><th>Semana</th><th>Sessões</th><th>Volume</th><th>Carga</th><th>PSE médio</th><th>Monotonia</th><th>Tensão</th><th>Bem-estar</th></tr></thead><tbody>'
-    +sem.slice().reverse().map(function(s){return '<tr'+(s.atual?' style="background:rgba(0,194,255,.06)"':'')+'><td>'+anDateLbl(s.ini)+(s.atual?' ▸':'')+'</td><td>'+s.nSess+'</td><td>'+km(s.vol)+'</td><td>'+(s.srpe?ua(s.srpe):'—')+'</td><td>'+(s.pse!=null?s.pse.toFixed(1):'—')+'</td><td>'+(s.mono?'<span style="color:'+(s.mono>2?'#f5c842':'inherit')+'">'+s.mono.toFixed(1)+'</span>':'—')+'</td><td>'+(s.strain?Math.round(s.strain).toLocaleString('pt-PT'):'—')+'</td><td>'+(s.be!=null?s.be.toFixed(1)+' <span class="an-sub">('+s.nBe+')</span>':'—')+'</td></tr>';}).join('')+'</tbody></table></div>';
+    +sem.slice().reverse().map(function(s){return '<tr'+(s.atual?' style="background:rgba(0,194,255,.06)"':'')+'><td>'+anDateLbl(s.ini)+(s.atual?' ▸':'')+'</td><td>'+s.nSess+'</td><td>'+km(s.vol)+'</td><td>'+(s.srpe?ua(s.srpe):'—')+'</td><td>'+(s.pse!=null?s.pse.toFixed(1):'—')+'</td><td>'+(s.mono?'<span style="color:'+(s.mono>2?'#f5c842':'inherit')+'">'+s.mono.toFixed(1)+'</span>':'—')+'</td><td>'+(s.strain?Math.round(s.strain).toLocaleString('pt-PT'):'—')+'</td><td>'+(s.be!=null?beFmtTot(s.be.toFixed(1))+' <span class="an-sub">/'+BE_MAX+' ('+s.nBe+')</span>':'—')+'</td></tr>';}).join('')+'</tbody></table></div>';
   h+='<div class="ev-sub" style="margin-top:12px">Últimos 14 dias</div><div style="overflow-x:auto"><table class="be-tb"><thead><tr><th>Dia</th><th>Sessões</th><th>Volume</th><th>PSE</th><th>Carga</th><th>Bem-estar</th></tr></thead><tbody>'
-    +c.ult7.slice().reverse().map(function(d){return '<tr><td>'+anDateLbl(d.data)+'</td><td>'+(d.nSess||'—')+'</td><td>'+(d.vol?d.vol.toLocaleString('pt-PT')+' m':'—')+'</td><td>'+(d.pse.length?d.pse.join(' / '):'—')+'</td><td>'+(d.srpe?ua(d.srpe):'—')+'</td><td>'+(d.be?BE_IC[d.be.est.st]+' '+d.be.tot:'—')+'</td></tr>';}).join('')+'</tbody></table></div>';
+    +c.ult7.slice().reverse().map(function(d){return '<tr><td>'+anDateLbl(d.data)+'</td><td>'+(d.nSess||'—')+'</td><td>'+(d.vol?d.vol.toLocaleString('pt-PT')+' m':'—')+'</td><td>'+(d.pse.length?d.pse.join(' / '):'—')+'</td><td>'+(d.srpe?ua(d.srpe):'—')+'</td><td>'+(d.be?BE_IC[d.be.est.st]+' '+beFmtTot(d.be.tot):'—')+'</td></tr>';}).join('')+'</tbody></table></div>';
   h+='<div class="an-sub" style="margin-top:8px">Volume = sessões da nadadora nos Planos de Treino (exclui faltas marcadas). Carga = PSE × duração de cada treino avaliado (o PSE individual da exceção tem prioridade sobre o do grupo).</div>';
   gi('kkcBody').innerHTML=h;
 }
@@ -25128,8 +25261,8 @@ function kkPainel(){
   var el=gi('anKika'); if(!el) return;
   var ki=kkInfo(); if(!ki){el.innerHTML='';el.style.display='none';return;}
   el.style.display='block';
-  var hoje=mpHojeISO(), b=beParaDia(ki.nad.id,hoje);
-  var beTxt=b&&b.e.data===hoje?BE_IC[b.est.st]+' Bem-estar hoje: <b>'+b.est.tot+'/25</b>'+(b.est.motivo?' · '+anEsc(b.est.motivo):''):'⚪ Bem-estar de hoje por preencher';
+  var hoje=mpHojeISO(), b=beHoje(ki.nad.id);
+  var beTxt=b&&b.e.data===hoje?BE_IC[b.est.st]+' Bem-estar hoje ('+BE_PER[b.e.per]+'): <b>'+beFmtTot(b.est.tot)+'/'+BE_MAX+'</b>'+(b.e.pse!=null?' · PSE <b>'+beFmtTot(b.e.pse)+'</b>':'')+(b.est.motivo?' · '+anEsc(b.est.motivo):''):'⚪ Bem-estar de hoje por preencher';
   var c=null; try{c=kkCarga(ki);}catch(e){console.warn('kk carga:',e);}
   var acw=c?(c.acwrS!=null?c.acwrS:c.acwrV):null;
   el.innerHTML='<div class="kk-box"><div class="kk-h">⭐ '+anEsc(kkPrimeiro(ki.nad))+' · acompanhamento individual</div>'
@@ -25144,6 +25277,9 @@ function kkPainel(){
 (function kkInit(){
   function wire(){
     bon('btnBeSave',beGuardar); bon('btnBeClose',function(){closeM('mBemEstar');});
+    bon('dshKkBE',function(){beAbrir();}); bon('dshKkBordo',function(){if(typeof bpAbrir==='function')bpAbrir();});
+    if(typeof rDash==='function'&&!rDash.__kk){var _rd=rDash;rDash=function(){var r=_rd.apply(this,arguments);try{kkDashAtalhos();}catch(e){}return r;};rDash.__kk=1;}
+    setTimeout(kkDashAtalhos,300);
     bon('btnKkcClose',function(){closeM('mKkCarga');});
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',wire); else wire();
@@ -25591,14 +25727,15 @@ function epZonasSessao(series,acc){
 }
 // Semanas de uma época para uma equipa: [{vol, n, zonas{}, comps, rps}]
 function epSemanas(Dx,s,key){
-  var ws=epWeeks(s), out=ws.map(function(w){return {ini:w.isoStart,fim:w.isoEnd,vol:0,n:0,zonas:{},comps:0,rps:0};});
+  var ws=epWeeks(s), out=ws.map(function(w){return {ini:w.isoStart,fim:w.isoEnd,vol:0,n:0,zonas:{},comps:0,rps:0,dv:[0,0,0,0,0,0,0],nd:[0,0,0,0,0,0,0]};});
   var tok=key==='todos'?null:key;
   (Dx.sessoes||[]).forEach(function(se){
     if(!se.data) return;
     if(tok&&String(se.equipa||'').split(',').map(function(x){return x.trim();}).indexOf(tok)<0) return;
     for(var i=0;i<ws.length;i++) if(se.data>=ws[i].isoStart&&se.data<=ws[i].isoEnd){
       var z=epZonasSessao(se.series,out[i].zonas), v=0; Object.keys(z);
-      out[i].n++; out[i].vol+=(typeof volSec==='function')?volSec(se.series):0; break;}
+      var vv=(typeof volSec==='function')?volSec(se.series):0, dd=Math.max(0,Math.min(6,anDateDiff(ws[i].isoStart,se.data)));
+      out[i].n++; out[i].vol+=vv; out[i].dv[dd]+=vv; out[i].nd[dd]++; break;}
   });
   // Nadadores da equipa nessa época → competições e RP
   var ids={};
@@ -25643,8 +25780,14 @@ function epRender(r){
   var Dant=r.D, eqs=epEquipasAnt(Dant);
   if(key==='todos') eqs.unshift({key:'todos',lbl:'Todas as equipas'});
   var keyAnt=EP_STATE.keyAnt||(key==='todos'?'todos':epMapearEquipa(key,Dant));
-  var at=epSemanas(D,cs,key), an=epSemanas(Dant,EP_STATE.ep,keyAnt);
+  var at=epSemanas(D,cs,key), anF=epSemanas(Dant,EP_STATE.ep,keyAnt), an=anF.slice();
   var hoje=mpHojeISO(), idx=at.findIndex(function(w){return hoje>=w.ini&&hoje<=w.fim;}); if(idx<0) idx=hoje<at[0].ini?0:51;
+  // Micro em curso: a época anterior conta só até ao mesmo dia da semana (comparação justa)
+  if(hoje>=at[idx].ini&&hoje<=at[idx].fim){
+    var off=Math.max(0,Math.min(6,anDateDiff(at[idx].ini,hoje))), wf=anF[idx], pv=0, pn=0;
+    for(var dd=0;dd<=off;dd++){pv+=wf.dv[dd];pn+=wf.nd[dd];}
+    an[idx]=Object.assign({},wf,{vol:pv,n:pn,volSem:wf.vol,nSem:wf.n,parcial:anDateLbl(hoje).split(' ')[0]});
+  }
   var ate=Math.min(51,idx+4);
   var h=epSeletor(eqs,keyAnt);
   h+='<div class="an-sub" style="margin-bottom:10px">Época atual: <b>'+anEsc(key==='todos'?'todas as equipas':anCtxKey(key).lbl)+'</b> · Época '+anEsc(EP_STATE.ep)+': <b>'+anEsc((eqs.find(function(e){return e.key===keyAnt;})||{lbl:keyAnt}).lbl)+'</b> · dados de '+anEsc(r.fonte)+'. Micro 1 = semana da 1.ª segunda-feira de setembro.</div>';
@@ -25654,7 +25797,7 @@ function epRender(r){
   var km=function(v){return (v/1000).toLocaleString('pt-PT',{maximumFractionDigits:1})+' km';};
   var dlt=function(a,b){if(!b)return '';var d=(a-b)/b*100;return '<span style="color:'+(Math.abs(d)<5?'var(--wd)':(d>0?'#00e5a0':'#ff8a4c'))+'">'+(d>0?'+':'')+d.toFixed(0)+'%</span>';};
   h+='<div class="an-kpis" style="margin-bottom:12px">'
-    +'<div class="an-kpi"><div class="an-kl">Volume até ao micro '+(idx+1)+'</div><div class="an-kv">'+km(sumA)+' '+dlt(sumA,sumB)+'</div><div class="an-sub">'+anEsc(EP_STATE.ep)+': '+km(sumB)+'</div></div>'
+    +'<div class="an-kpi"><div class="an-kl">Volume até hoje (micro '+(idx+1)+')</div><div class="an-kv">'+km(sumA)+' '+dlt(sumA,sumB)+'</div><div class="an-sub">'+anEsc(EP_STATE.ep)+': '+km(sumB)+'</div></div>'
     +'<div class="an-kpi"><div class="an-kl">Sessões</div><div class="an-kv">'+nA+' '+dlt(nA,nB)+'</div><div class="an-sub">'+anEsc(EP_STATE.ep)+': '+nB+'</div></div>'
     +'<div class="an-kpi"><div class="an-kl">% qualidade (A3 a VEL)</div><div class="an-kv">'+(epQualPct(zA)!=null?epQualPct(zA).toFixed(0)+'%':'—')+'</div><div class="an-sub">'+anEsc(EP_STATE.ep)+': '+(epQualPct(zB)!=null?epQualPct(zB).toFixed(0)+'%':'—')+'</div></div>'
     +'<div class="an-kpi"><div class="an-kl">Competições · RP</div><div class="an-kv">'+cA+' · '+rA+'</div><div class="an-sub">'+anEsc(EP_STATE.ep)+': '+cB+' · '+rB+'</div></div></div>';
@@ -25669,8 +25812,10 @@ function epRender(r){
   // Tabela por micro
   h+='<div class="ev-sub" style="margin-top:12px">Micro a micro</div><div style="overflow-x:auto"><table class="be-tb"><thead><tr><th>Micro</th><th>Semana</th><th>Vol. '+anEsc(cs)+'</th><th>Vol. '+anEsc(EP_STATE.ep)+'</th><th>Δ</th><th>Qual. atual</th><th>Qual. ant.</th><th>Sessões</th><th>Comp. (RP)</th></tr></thead><tbody>';
   for(var j=ate;j>=0;j--){var A=at[j],B=an[j],fut=j>idx;
-    h+='<tr'+(j===idx?' style="background:rgba(0,194,255,.06)"':'')+(fut?' style="opacity:.7"':'')+'><td>'+(j+1)+(j===idx?' ▸':'')+'</td><td>'+anDateLbl(A.ini)+'</td><td>'+(fut?'—':km(A.vol))+'</td><td>'+km(B.vol)+'</td><td>'+(fut?'':dlt(A.vol,B.vol))+'</td><td>'+(fut||epQualPct(A.zonas)==null?'—':epQualPct(A.zonas).toFixed(0)+'%')+'</td><td>'+(epQualPct(B.zonas)!=null?epQualPct(B.zonas).toFixed(0)+'%':'—')+'</td><td>'+(fut?'—':A.n)+' / '+B.n+'</td><td>'+(fut?'—':A.comps+(A.rps?' ('+A.rps+')':''))+' / '+B.comps+(B.rps?' ('+B.rps+')':'')+'</td></tr>';}
+    h+='<tr'+(j===idx?' style="background:rgba(0,194,255,.06)"':'')+(fut?' style="opacity:.7"':'')+'><td>'+(j+1)+(j===idx?' ▸':'')+'</td><td>'+anDateLbl(A.ini)+'</td><td>'+(fut?'—':km(A.vol))+'</td><td>'+km(B.vol)+(B.parcial?' <span class="an-sub">(até '+B.parcial+' · semana '+km(B.volSem)+')</span>':'')+'</td><td>'+(fut?'':dlt(A.vol,B.vol))+'</td><td>'+(fut||epQualPct(A.zonas)==null?'—':epQualPct(A.zonas).toFixed(0)+'%')+'</td><td>'+(epQualPct(B.zonas)!=null?epQualPct(B.zonas).toFixed(0)+'%':'—')+'</td><td>'+(fut?'—':A.n)+' / '+B.n+'</td><td>'+(fut?'—':A.comps+(A.rps?' ('+A.rps+')':''))+' / '+B.comps+(B.rps?' ('+B.rps+')':'')+'</td></tr>';}
   h+='</tbody></table></div>';
+  EP_STATE.ult={key:key, lbl:(key==='todos'?'Todas as equipas':anCtxKey(key).lbl), antLbl:(eqs.find(function(e){return e.key===keyAnt;})||{lbl:keyAnt}).lbl.replace(/^[✨👤] /,''),
+    fonte:r.fonte, at:at, an:an, idx:idx, ate:ate, zA:zA, zB:zB, sumA:sumA, sumB:sumB, nA:nA, nB:nB, cA:cA, cB:cB, rA:rA, rB:rB};
   gi('epBody').innerHTML=h; epWire();
 }
 function epGrafBarras(A,B,idx){
@@ -25701,8 +25846,62 @@ function epGrafAcum(A,B,idx,ate){
   g+='<text x="'+L+'" y="'+(H-6)+'" class="ev-ax">Micro 1</text><text x="'+(W-R)+'" y="'+(H-6)+'" class="ev-ax" text-anchor="end">Micro '+n+'</text>';
   return g+'</svg>';
 }
+// ─── PDF / Word ───────────────────────────────────────────────────────
+function epExportPDF(){
+  var u=EP_STATE.ult; if(!u){toast('Abra primeiro a comparação','error');return;}
+  var logoSrc=(gi('clubLogoImg')||{}).src||'', A=cs, B=EP_STATE.ep;
+  var km=function(v){return (v/1000).toLocaleString('pt-PT',{maximumFractionDigits:1})+' km';};
+  var dlt=function(a,b){if(!b)return '—';var d=(a-b)/b*100;return '<span style="color:'+(Math.abs(d)<5?'#666':(d>0?'#065f46':'#b45309'))+';font-weight:700">'+(d>0?'+':'')+d.toFixed(0)+'%</span>';};
+  var q=function(z){var x=epQualPct(z);return x==null?'—':x.toFixed(0)+'%';};
+  var html='<div class="hdr"><img src="'+logoSrc+'"><div><div class="hdr-t">FOCA — Comparação com a época anterior</div><div class="hdr-s">'+anEsc(u.lbl)+' · Época '+anEsc(A)+' vs '+anEsc(B)+(u.antLbl&&u.antLbl!==u.lbl?' ('+anEsc(u.antLbl)+')':'')+' · até '+anDateLbl(mpHojeISO())+' (Micro '+(u.idx+1)+')</div></div></div>';
+  html+='<table class="kpi"><tr>'
+    +'<td><span>Volume até '+anDateLbl(mpHojeISO())+' (micro '+(u.idx+1)+')</span><b>'+km(u.sumA)+' '+dlt(u.sumA,u.sumB)+'</b><i>'+anEsc(B)+': '+km(u.sumB)+'</i></td>'
+    +'<td><span>Sessões</span><b>'+u.nA+' '+dlt(u.nA,u.nB)+'</b><i>'+anEsc(B)+': '+u.nB+'</i></td>'
+    +'<td><span>% qualidade (A3 a VEL)</span><b>'+q(u.zA)+'</b><i>'+anEsc(B)+': '+q(u.zB)+'</i></td>'
+    +'<td><span>Competições · RP</span><b>'+u.cA+' · '+u.rA+'</b><i>'+anEsc(B)+': '+u.cB+' · '+u.rB+'</i></td></tr></table>';
+  html+='<div class="sec-t">Volume por micro</div><div class="reg-blk-meta"><span style="display:inline-block;width:9px;height:9px;background:#1a5fb4;border-radius:2px"></span> '+anEsc(A)+' &nbsp; <span style="display:inline-block;width:9px;height:9px;background:#9ca3af;border-radius:2px"></span> '+anEsc(B)+' &nbsp; (as 4 semanas a seguir mostram o que se fez na época anterior)</div>'+epPdfBarras(u)
+    +'<div class="sec-t">Volume acumulado</div>'+epPdfAcum(u);
+  var zs=AN_ORDER.filter(function(z){return u.zA[z]||u.zB[z];}), tA=0,tB=0; zs.forEach(function(z){tA+=u.zA[z]||0;tB+=u.zB[z]||0;});
+  html+='<div class="sec-t">Distribuição por zona (até ao micro '+(u.idx+1)+')</div><table class="reg-tbl-pdf"><thead><tr><th>Zona</th><th>'+anEsc(A)+'</th><th>%</th><th>'+anEsc(B)+'</th><th>%</th><th>Δ</th></tr></thead><tbody>'
+    +zs.map(function(z){var a=u.zA[z]||0,b=u.zB[z]||0;return '<tr><td><b>'+z+'</b></td><td>'+km(a)+'</td><td>'+(tA?(a/tA*100).toFixed(0)+'%':'—')+'</td><td>'+km(b)+'</td><td>'+(tB?(b/tB*100).toFixed(0)+'%':'—')+'</td><td>'+dlt(a,b)+'</td></tr>';}).join('')+'</tbody></table>';
+  html+='<div class="sec-t">Micro a micro</div><table class="reg-tbl-pdf"><thead><tr><th>Micro</th><th>Semana</th><th>Vol. '+anEsc(A)+'</th><th>Vol. '+anEsc(B)+'</th><th>Δ</th><th>Qual. '+anEsc(A)+'</th><th>Qual. '+anEsc(B)+'</th><th>Sessões</th><th>Comp. (RP)</th></tr></thead><tbody>';
+  for(var j=0;j<=u.ate;j++){var X=u.at[j],Y=u.an[j],fut=j>u.idx;
+    html+='<tr'+(j===u.idx?' style="background:#e0f2fe"':(fut?' style="color:#888"':''))+'><td>'+(j+1)+'</td><td>'+anDateLbl(X.ini)+'</td><td>'+(fut?'—':km(X.vol))+'</td><td>'+km(Y.vol)+(Y.parcial?' <span style="color:#666">(até '+Y.parcial+' · semana '+km(Y.volSem)+')</span>':'')+'</td><td>'+(fut?'—':dlt(X.vol,Y.vol))+'</td><td>'+(fut?'—':q(X.zonas))+'</td><td>'+q(Y.zonas)+'</td><td>'+(fut?'—':X.n)+' / '+Y.n+'</td><td>'+(fut?'—':X.comps+(X.rps?' ('+X.rps+')':''))+' / '+Y.comps+(Y.rps?' ('+Y.rps+')':'')+'</td></tr>';}
+  html+='</tbody></table><div class="reg-blk-meta" style="margin-top:8px">Micro 1 = semana da 1.ª segunda-feira de setembro. No micro em curso, a época anterior conta só até ao mesmo dia da semana. Dados da época '+anEsc(B)+': '+anEsc(u.fonte)+'. Gerado pelo FOCA em '+anDateLbl(mpHojeISO())+'.</div>';
+  var w=window.open('','_blank','width=1200,height=900');
+  if(!w){toast('Permite popups','error');return;}
+  w.document.open();
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>FOCA — Época anterior</title><style>'+anPdfCss()+'</style></head><body>'+html+'<scr'+'ipt>window.onload=function(){setTimeout(function(){window.print();},400);};</scr'+'ipt></body></html>');
+  w.document.close();
+}
+function epPdfBarras(u){
+  var n=u.ate+1, W=1000,H=190,L=50,R=10,T=14,B2=22, mx=1;
+  for(var i=0;i<n;i++){mx=Math.max(mx,i<=u.idx?u.at[i].vol:0,u.an[i].vol);}
+  var gw=(W-L-R)/n, bw=Math.max(2,gw*0.36), ys=function(v){return T+(1-v/mx)*(H-T-B2);};
+  var g='<svg viewBox="0 0 '+W+' '+H+'" width="100%" xmlns="http://www.w3.org/2000/svg">';
+  [0,0.5,1].forEach(function(f){var v=mx*f;g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+ys(v)+'" y2="'+ys(v)+'" stroke="#e5e7eb"/><text x="'+(L-5)+'" y="'+(ys(v)+3)+'" font-size="10" fill="#666" text-anchor="end">'+Math.round(v/1000)+' km</text>';});
+  for(var j=0;j<n;j++){var x=L+j*gw+gw/2,a=j<=u.idx?u.at[j].vol:0,b=u.an[j].vol;
+    if(a) g+='<rect x="'+(x-bw-1)+'" y="'+ys(a)+'" width="'+bw+'" height="'+(ys(0)-ys(a))+'" rx="2" fill="#1a5fb4"/>';
+    if(b) g+='<rect x="'+(x+1)+'" y="'+ys(b)+'" width="'+bw+'" height="'+(ys(0)-ys(b))+'" rx="2" fill="#9ca3af" opacity="'+(j>u.idx?0.55:1)+'"/>';
+    if(n<=26||j%2===0) g+='<text x="'+x+'" y="'+(H-6)+'" font-size="10" fill="#666" text-anchor="middle">'+(j+1)+'</text>';}
+  return g+'</svg>';
+}
+function epPdfAcum(u){
+  var n=u.ate+1, W=1000,H=170,L=50,R=70,T=12,B2=22, ca=[],cb=[],sa=0,sb=0;
+  for(var i=0;i<n;i++){sa+=u.at[i].vol;sb+=u.an[i].vol;ca.push(sa);cb.push(sb);}
+  var na=Math.min(u.idx,n-1), mx=Math.max(1,ca[na],cb[n-1]);
+  var xs=function(i){return L+(n===1?0.5:i/(n-1))*(W-L-R);}, ys=function(v){return T+(1-v/mx)*(H-T-B2);};
+  var g='<svg viewBox="0 0 '+W+' '+H+'" width="100%" xmlns="http://www.w3.org/2000/svg">';
+  [0,0.5,1].forEach(function(f){var v=mx*f;g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+ys(v)+'" y2="'+ys(v)+'" stroke="#e5e7eb"/><text x="'+(L-5)+'" y="'+(ys(v)+3)+'" font-size="10" fill="#666" text-anchor="end">'+Math.round(v/1000)+' km</text>';});
+  g+='<polyline fill="none" stroke="#9ca3af" stroke-width="2" points="'+cb.map(function(v,i){return xs(i)+','+ys(v);}).join(' ')+'"/>';
+  g+='<polyline fill="none" stroke="#1a5fb4" stroke-width="2.5" points="'+ca.slice(0,na+1).map(function(v,i){return xs(i)+','+ys(v);}).join(' ')+'"/>';
+  g+='<circle cx="'+xs(na)+'" cy="'+ys(ca[na])+'" r="4" fill="#1a5fb4"/><text x="'+(xs(na)+7)+'" y="'+(ys(ca[na])+14)+'" font-size="11" font-weight="700" fill="#1a5fb4">'+cs+': '+(ca[na]/1000).toFixed(0)+' km</text>';
+  g+='<text x="'+(xs(n-1)+6)+'" y="'+(ys(cb[n-1])+4)+'" font-size="10" fill="#666">'+(cb[n-1]/1000).toFixed(0)+' km</text>';
+  g+='<text x="'+L+'" y="'+(H-6)+'" font-size="10" fill="#666">Micro 1</text><text x="'+(W-R)+'" y="'+(H-6)+'" font-size="10" fill="#666" text-anchor="end">Micro '+n+'</text>';
+  return g+'</svg>';
+}
 (function epInit(){
-  function wire(){bon('btnEpClose',function(){closeM('mEpAnt');});bon('btnAnEpAnt',function(){try{epAbrir();}catch(e){console.error(e);toast('Erro: '+e.message,'error');}});}
+  function wire(){bon('btnEpClose',function(){closeM('mEpAnt');});bon('btnEpPDF',function(){try{epExportPDF();}catch(e){console.error(e);toast('Erro: '+e.message,'error');}});bon('btnEpWord',function(){try{exportPdfFuncToWord(epExportPDF,'foca_epoca_anterior');}catch(e){toast('Erro Word: '+e.message,'error');}});bon('btnAnEpAnt',function(){try{epAbrir();}catch(e){console.error(e);toast('Erro: '+e.message,'error');}});}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',wire); else wire();
 })();
 
@@ -25917,7 +26116,7 @@ function rlExportPDF(){
       +d.objs.map(function(x){var o=x.o,a=x.a||{};return '<tr><td class="nad-name">'+anEsc(x.nome)+'</td><td>'+anEsc(obProvaLbl(o))+'</td><td>'+anEsc((o.competicao||'')+(o.data?' ('+anDateLbl(o.data)+')':''))+'</td><td><b>'+ritmosFormatTime(o.tempo,2)+'</b></td><td>'+(a.rp?ritmosFormatTime(a.rp.secs,2):'—')+'</td><td>'+(a.rp?(a.gap>0?'faltam '+a.gap.toFixed(2)+' s':'✔ atingido'):'—')+'</td>'+(pais?'':'<td>'+(a.ultPct!=null?a.ultPct.toFixed(1)+'%':'—')+'</td>')+'</tr>';}).join('')+'</tbody></table>';
   }
   if(on('bemestar')&&d.be.length){
-    html+='<div class="sec-t">Bem-estar</div><table class="reg-tbl-pdf"><thead><tr><th style="text-align:left">Nadador</th><th>Respostas</th><th>Média (5–25)</th><th>Dias 🟡</th><th>Dias 🔴</th></tr></thead><tbody>'
+    html+='<div class="sec-t">Bem-estar</div><table class="reg-tbl-pdf"><thead><tr><th style="text-align:left">Nadador</th><th>Respostas</th><th>Média (0–50)</th><th>Dias 🟡</th><th>Dias 🔴</th></tr></thead><tbody>'
       +d.be.map(function(x){return '<tr><td class="nad-name">'+anEsc(x.nome)+'</td><td>'+x.n+'</td><td><b>'+x.media.toFixed(1)+'</b></td><td>'+x.am+'</td><td>'+x.verm+'</td></tr>';}).join('')+'</tbody></table>';
   }
   if(on('notas')&&RL_STATE.notas[mod]) html+='<div class="sec-t">Notas do treinador</div><div class="reg-blk" style="font-size:11px;white-space:pre-wrap">'+anEsc(RL_STATE.notas[mod])+'</div>';
