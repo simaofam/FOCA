@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0a1628">
+<title>FOCA · Bem-estar</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<style>
+:root{--d:#0a1628;--m:#0d2240;--s:#103460;--a:#00c2ff;--w:#f0f6ff;--wd:rgba(240,246,255,.6);--b:rgba(0,194,255,.15);--r:#ff4f6d;--gr:#00e5a0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--d);color:var(--w);font-family:'DM Sans',sans-serif;font-size:15px;-webkit-tap-highlight-color:transparent}
+.wrap{max-width:520px;margin:0 auto;padding:18px 16px 40px}
+h1{font-family:'Syne',sans-serif;font-size:22px;margin:4px 0 2px}
+.sub{color:var(--wd);font-size:13px}
+.card{background:var(--m);border:1px solid var(--b);border-radius:16px;padding:14px;margin-top:14px}
+.q{margin-bottom:16px}
+.ql{font-weight:700;margin-bottom:8px}
+.op{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.op button{background:var(--s);border:2px solid transparent;border-radius:12px;color:var(--w);padding:8px 2px;font-family:inherit;cursor:pointer;min-height:58px}
+.op button b{display:block;font-size:18px}
+.op button span{display:block;font-size:10px;color:var(--wd);margin-top:2px;line-height:1.15}
+.op button.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 22%,var(--s))}
+.op button.on span{color:var(--w)}
+input{width:100%;background:var(--s);border:1px solid var(--b);border-radius:10px;color:var(--w);padding:10px 12px;font-size:15px;font-family:inherit}
+label{display:block;font-size:12px;color:var(--wd);margin:4px 0 4px}
+.row{display:flex;gap:10px}
+.btn{width:100%;margin-top:14px;background:var(--a);color:#03203a;border:0;border-radius:14px;padding:14px;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer}
+.btn:disabled{opacity:.5}
+.msg{margin-top:12px;padding:12px;border-radius:12px;font-size:14px;display:none}
+.msg.ok{display:block;background:rgba(0,229,160,.12);border:1px solid rgba(0,229,160,.4)}
+.msg.err{display:block;background:rgba(255,79,109,.12);border:1px solid rgba(255,79,109,.4)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{padding:6px 4px;border-bottom:1px solid var(--b);text-align:center}
+th{color:var(--wd);font-weight:500;font-size:11px}
+td:first-child,th:first-child{text-align:left}
+.erro{padding:30px 10px;text-align:center;color:var(--wd)}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="erro">A carregar…</div></div>
+<script>
+// Página do nadador: só lê e escreve o seu próprio documento seasons/<época>__bem_<código>.
+// Não tem acesso aos dados da época nem ao resto do FOCA.
+var FB_CONFIG={apiKey:"AIzaSyBA2EdheCvUIjS15fAF9BodI_mjTC4eaZM",authDomain:"foca-natacao.firebaseapp.com",projectId:"foca-natacao",storageBucket:"foca-natacao.firebasestorage.app",messagingSenderId:"1059059053231",appId:"1:1059059053231:web:5b6cdc3338e59a6a3c5a5a"};
+var ITENS=[
+  {k:'sono',  c:'Sono',  lbl:'Como dormiste?',            esc:['Péssimo','Mal','Razoável','Bem','Muito bem']},
+  {k:'fadiga',c:'Cansaço',lbl:'Cansaço',                   esc:['Exausta/o','Muito','Normal','Pouco','Nenhum']},
+  {k:'dor',   c:'Dores', lbl:'Dores musculares',          esc:['Muitas','Bastantes','Algumas','Poucas','Nenhumas']},
+  {k:'stress',c:'Stress',lbl:'Stress (escola, casa…)',    esc:['Muito alto','Alto','Normal','Baixo','Nenhum']},
+  {k:'humor', c:'Humor', lbl:'Humor / vontade de treinar',esc:['Muito mau','Mau','Normal','Bom','Ótimo']}
+];
+var CORES=['#ff4f6d','#ff8a4c','#f5c842','#7bd88f','#00e5a0'];
+var q=new URLSearchParams(location.search), EP=q.get('e')||'', TK=q.get('t')||'', NOME=q.get('n')||'';
+var db=null, ref=null, ENT=[], V={};
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function hoje(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function lbl(iso){var p=iso.split('-');var d=new Date(+p[0],+p[1]-1,+p[2]);return ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d.getDay()]+' '+p[2]+'/'+p[1];}
+function total(e){var t=0;for(var i=0;i<ITENS.length;i++){var v=parseInt(e[ITENS[i].k],10);if(!v)return null;t+=v;}return t;}
+function render(){
+  var h='<h1>Olá'+(NOME?' '+esc(NOME):'')+' 👋</h1><div class="sub">Bem-estar de hoje · '+lbl(hoje())+'. Leva 20 segundos.</div><div class="card">';
+  ITENS.forEach(function(it){h+='<div class="q"><div class="ql">'+it.lbl+'</div><div class="op">'+it.esc.map(function(t,i){return '<button type="button" class="'+(parseInt(V[it.k],10)===i+1?'on':'')+'" data-k="'+it.k+'" data-v="'+(i+1)+'" style="--c:'+CORES[i]+'"><b>'+(i+1)+'</b><span>'+t+'</span></button>';}).join('')+'</div></div>';});
+  h+='<div class="row"><div style="width:40%"><label>Horas de sono</label><input id="hs" type="number" inputmode="decimal" step="0.5" min="0" max="14" value="'+esc(V.horasSono||'')+'"></div><div style="flex:1"><label>Algo a dizer ao treinador?</label><input id="nt" value="'+esc(V.nota||'')+'" placeholder="opcional"></div></div>';
+  h+='<button class="btn" id="go"'+(total(V)==null?' disabled':'')+'>'+(ENT.some(function(e){return e.data===hoje();})?'Atualizar resposta de hoje':'Enviar')+'</button><div class="msg" id="msg"></div></div>';
+  var ult=ENT.slice().sort(function(a,b){return a.data<b.data?1:-1;}).slice(0,7);
+  if(ult.length) h+='<div class="card"><div class="ql">Os teus últimos dias</div><table><tr><th>Dia</th>'+ITENS.map(function(it){return '<th>'+it.c+'</th>';}).join('')+'<th>Total</th></tr>'+ult.map(function(e){return '<tr><td>'+lbl(e.data)+'</td>'+ITENS.map(function(it){return '<td>'+e[it.k]+'</td>';}).join('')+'<td><b>'+total(e)+'</b>/25</td></tr>';}).join('')+'</table></div>';
+  document.getElementById('app').innerHTML=h;
+  document.querySelectorAll('[data-k]').forEach(function(b){b.addEventListener('click',function(){ler();V[this.getAttribute('data-k')]=parseInt(this.getAttribute('data-v'),10);render();});});
+  document.getElementById('go').addEventListener('click',enviar);
+}
+function ler(){var a=document.getElementById('hs'),b=document.getElementById('nt');if(a)V.horasSono=a.value;if(b)V.nota=b.value;}
+function msg(t,ok){var m=document.getElementById('msg');m.className='msg '+(ok?'ok':'err');m.textContent=t;}
+function enviar(){
+  ler(); if(total(V)==null) return;
+  var bt=document.getElementById('go'); bt.disabled=true; bt.textContent='A enviar…';
+  var e={data:hoje(),horasSono:V.horasSono?parseFloat(V.horasSono):'',nota:String(V.nota||'').slice(0,300),ts:new Date().toISOString()};
+  ITENS.forEach(function(it){e[it.k]=parseInt(V[it.k],10);});
+  ref.get().then(function(doc){
+    var l=(doc.exists&&doc.data().entradas)||[];
+    l=l.filter(function(x){return x.data!==e.data;}); l.push(e);
+    l.sort(function(a,b){return a.data<b.data?-1:1;}); if(l.length>400) l=l.slice(-400);
+    return ref.set({entradas:l,nome:NOME,ts:e.ts},{merge:true}).then(function(){ENT=l;});
+  }).then(function(){render();msg('✅ Obrigado! Resposta enviada ao treinador.',true);})
+    .catch(function(err){bt.disabled=false;bt.textContent='Tentar de novo';msg('Não foi possível enviar ('+(err&&err.message||err)+'). Verifica a internet e tenta de novo.',false);});
+}
+(function(){
+  if(!EP||!TK||!/^[a-z0-9]{8,40}$/i.test(TK)||!/^\d{4}-\d{4}$/.test(EP)){document.getElementById('app').innerHTML='<div class="erro">Link inválido. Pede ao treinador um link novo.</div>';return;}
+  try{firebase.initializeApp(FB_CONFIG);db=firebase.firestore();}catch(e){document.getElementById('app').innerHTML='<div class="erro">Sem ligação. Tenta mais tarde.</div>';return;}
+  ref=db.collection('seasons').doc(EP+'__bem_'+TK);
+  ref.get().then(function(doc){
+    ENT=(doc.exists&&doc.data().entradas)||[];
+    var h=ENT.find(function(e){return e.data===hoje();}); if(h) V=JSON.parse(JSON.stringify(h));
+    render();
+  }).catch(function(){render();});
+})();
+</script>
+</body>
+</html>
