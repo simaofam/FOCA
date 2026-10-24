@@ -24677,7 +24677,7 @@ function pseRapido(sid){
 // Ritmo /100 por zona (e estilo) ao longo do tempo, % no alvo e PSE.
 // Alerta de fadiga: nas 2 últimas séries da zona o ritmo piora >1,5% face às anteriores
 // e o PSE sobe (ou, sem PSE, piora >2,5%). Também assinala melhorias.
-var EV_STATE={nad:null, zona:null, ep:'atual'};
+var EV_STATE={nad:null, zona:null, ep:'atual', pis:'todas'};
 var EV_CACHE={};
 
 function evAnalise(r,Dx,ep){
@@ -24727,13 +24727,13 @@ function evPontos(nadId0){
     var grp={};
     l.porParte.forEach(function(pp,i){
       var p=an.info.partes[pp.n-1]; if(!p||!p.dist||!pp.media) return;
-      var est=evEstilo(p.estilo), chave=p.int+' · '+p.dist+'m'+(est!=='Crol'?' '+est:'');
-      var g=grp[chave]||(grp[chave]={pace:[],pct:[],zona:p.int,estilo:est,dist:[],idx:[],fonte:p.estiloFonte});
+      var est=evEstilo(p.estilo), pis=evPisDe(an.info.piscina), chave=p.int+' · '+p.dist+'m'+(est!=='Crol'?' '+est:'')+' · '+(pis||'piscina ?');
+      var g=grp[chave]||(grp[chave]={pace:[],pct:[],zona:p.int,estilo:est,dist:[],idx:[],fonte:p.estiloFonte,pis:pis});
       g.pace.push(pp.media/(p.dist/100)); if(pp.pct!=null) g.pct.push(pp.pct); g.dist.push(p.dist); g.idx.push(pp.n-1);
     });
     Object.keys(grp).forEach(function(k){
       var g=grp[k];
-      out.push({data:r.data, chave:k, zona:g.zona, estilo:g.estilo, dist:g.dist, pace:anMean(g.pace), pct:g.pct.length?anMean(g.pct):null, rpe:l.rpe||null, reg:r, final:l.final, ep:epR, idx:g.idx, estFonte:g.fonte, editavel:F.D===D});
+      out.push({data:r.data, chave:k, pis:g.pis, zona:g.zona, estilo:g.estilo, dist:g.dist, pace:anMean(g.pace), pct:g.pct.length?anMean(g.pct):null, rpe:l.rpe||null, reg:r, final:l.final, ep:epR, idx:g.idx, estFonte:g.fonte, editavel:F.D===D});
     });
   });
   });
@@ -24761,7 +24761,9 @@ function evEstilo(e){var u=String(e||'Crol').trim().toUpperCase();if(!u||u==='CR
 // Fora do padrão: ritmo >8% afastado da mediana da mesma zona/distância/estilo (provável estilo, material
 // ou tarefa diferente) — mostra-se, mas não entra na tendência nem nos sinais
 var EV_FORA=8;
-function evPorChave(pts){var m={};pts.forEach(function(p){(m[p.chave]=m[p.chave]||[]).push(p);});
+// Piscina do treino (marcada na sessão do plano): '25m' | '50m' | '' (sem indicação)
+function evPisDe(p){var t=String(p||'').toLowerCase();if(/25/.test(t))return '25m';if(/50/.test(t))return '50m';return '';}
+function evPorChave(pts){var m={};pts=pts.filter(function(p){return EV_STATE.pis==='todas'||(p.pis||'')===(EV_STATE.pis==='sem'?'':EV_STATE.pis);});pts.forEach(function(p){(m[p.chave]=m[p.chave]||[]).push(p);});
   Object.keys(m).forEach(function(k){var a=m[k];a.forEach(function(p){p.fora=false;});if(a.length<3)return;
     var srt=a.map(function(p){return p.pace;}).sort(function(x,y){return x-y;}), md=srt.length%2?srt[(srt.length-1)/2]:(srt[srt.length/2-1]+srt[srt.length/2])/2;
     a.forEach(function(p){p.desvio=(p.pace-md)/md*100;p.fora=Math.abs(p.desvio)>EV_FORA;});});
@@ -24819,6 +24821,7 @@ function evRender(){
   var nads=evNadadoresEquipa(), al=evAlertasEquipa(), h='';
   h+='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px"><label class="fl" style="margin:0">Época</label><select class="fse" id="evEp" style="width:auto">'
     +[['atual','Atual ('+cs+')'],['ant','Anterior ('+evEpAnt()+')'],['todos','Todas ('+evEpAnt()+' + '+cs+')']].map(function(o){return '<option value="'+o[0]+'"'+(EV_STATE.ep===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>'
+    +'<label class="fl" style="margin:0 0 0 8px">Piscina</label><select class="fse" id="evPis" style="width:auto">'+[['todas','25 m e 50 m (separadas)'],['25m','Só 25 m'],['50m','Só 50 m'],['sem','Sem piscina indicada']].map(function(o){return '<option value="'+o[0]+'"'+(EV_STATE.pis===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>'
     +(EV_STATE.ep!=='atual'?'<span class="an-sub">Na época anterior o nadador é encontrado pela ficha ou pelo nome.</span>':'')+'</div>';
   // Alertas da equipa
   h+='<div class="ev-sec"><div class="ev-h">Sinais na equipa <span class="an-sub">(2 últimas séries de cada zona vs. anteriores)</span></div>';
@@ -24843,6 +24846,7 @@ function evRender(){
   var b=gi('evBody');
   gi('evNad').addEventListener('change',function(){EV_STATE.nad=this.value;EV_STATE.zona=null;evRender();});
   gi('evEp').addEventListener('change',function(){evMudarEp(this.value);});
+  gi('evPis').addEventListener('change',function(){EV_STATE.pis=this.value;EV_STATE.zona=null;evRender();});
   b.querySelectorAll('.ev-est').forEach(function(x){x.addEventListener('change',function(){
     var r=(D.registosTreino||[]).find(function(y){return y.id===x.getAttribute('data-ev-reg');}); if(!r||!r.partes) return;
     var v=x.value; x.getAttribute('data-ev-idx').split(',').forEach(function(i){var pp=r.partes[+i];if(!pp)return;if(v)pp.estilo=v;else delete pp.estilo;});
@@ -25949,11 +25953,15 @@ function obAnalisar(o){
     if(OB_ZONAS.indexOf(p.zona)<0) return false;
     if(est==='Crol'?!anEhCrol(p.estilo):String(p.estilo||'').toUpperCase().slice(0,4)!==est.toUpperCase().slice(0,4)) return false;
     return Math.max.apply(null,p.dist)<=o.dist;
-  }).map(function(p){return Object.assign({},p,{pctRitmo:alvoP/p.pace*100});});
+  });
+  // Só as séries feitas na mesma piscina do objetivo (a piscina vem da sessão do plano de treino)
+  var pisO=evPisDe(o.piscina), outras=0, semPis=0;
+  if(pisO) pts=pts.filter(function(p){if(p.pis===pisO)return true;if(p.pis)outras++;else semPis++;return false;});
+  pts=pts.map(function(p){return Object.assign({},p,{pctRitmo:alvoP/p.pace*100});});
   var porZona={};
   pts.forEach(function(p){(porZona[p.zona]=porZona[p.zona]||[]).push(p);});
   var ult=pts.slice(-3);
-  return {alvoP:alvoP, rp:rp, gap:rp?rp.secs-o.tempo:null, gapPct:rp?(rp.secs-o.tempo)/o.tempo*100:null, pts:pts, porZona:porZona,
+  return {outras:outras, semPis:semPis, pisO:pisO, alvoP:alvoP, rp:rp, gap:rp?rp.secs-o.tempo:null, gapPct:rp?(rp.secs-o.tempo)/o.tempo*100:null, pts:pts, porZona:porZona,
     ultPct:ult.length?anMean(ult.map(function(p){return p.pctRitmo;})):null,
     dias:o.data?anDateDiff(mpHojeISO(),o.data):null};
 }
@@ -25980,6 +25988,7 @@ function obRender(){
       +'<div class="an-kpi"><div class="an-kl">RP atual</div><div class="an-kv">'+(a.rp?ritmosFormatTime(a.rp.secs,2):'—')+'</div><div class="an-sub">'+(a.rp?(a.gap>0?'faltam '+a.gap.toFixed(2)+' s ('+a.gapPct.toFixed(1)+'%)':'✅ objetivo já atingido')+(a.rp.exact?'':' · outra piscina'):'sem RP nesta prova')+'</div></div>'
       +'<div class="an-kpi"><div class="an-kl">Treino vs ritmo de prova</div><div class="an-kv" style="color:'+(a.ultPct==null?'inherit':(a.ultPct>=100?'#00e5a0':(a.ultPct>=97?'#f5c842':'#ff8a4c')))+'">'+(a.ultPct!=null?a.ultPct.toFixed(1)+'%':'—')+'</div><div class="an-sub">'+(a.ultPct!=null?'média das 3 últimas séries de qualidade (100% = ritmo de prova)':'sem séries de qualidade neste estilo')+'</div></div></div>';
     h+='<div class="an-sub" style="margin-top:8px">Parciais ao ritmo objetivo: '+obParciais(o)+'</div>';
+    if(a.pisO) h+='<div class="an-sub" style="margin-top:4px">🏊 Só séries de treinos em piscina de '+a.pisO+(a.outras?' · '+a.outras+' série(s) noutra piscina não contam':'')+(a.semPis?' · '+a.semPis+' série(s) sem piscina indicada na sessão não contam':'')+'.</div>';
     if(a.pts.length){
       h+='<div class="ev-sub" style="margin-top:10px">Ritmo /100 nas séries de qualidade vs ritmo objetivo (linha tracejada) — mais rápido em cima</div>'+obGrafico(a);
       h+='<div style="overflow-x:auto;margin-top:6px"><table class="be-tb"><thead><tr><th>Zona</th><th>Séries</th><th>Último /100</th><th>Melhor /100</th><th>% ritmo prova (último)</th></tr></thead><tbody>'
