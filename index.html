@@ -26931,7 +26931,139 @@ var SP_LIB=[
 {id:'RX-01',t:'RX',z:'',p:'KAC',n:'Soltura costas duplo + escolha',s:'200 C REC "costas duplo — soltar peitorais" ; 200 EE REC "respiração profunda"',o:'Séries-tipo Kika',d:''},
 {id:'RX-02',t:'RX',z:'',p:'KAC',n:'4×100 C/B muito lento',s:'4x100 EST REC "25 costas / 25 bruços — muito lento"',o:'Séries-tipo Kika',d:''},
 {id:'RX-03',t:'RX',z:'',p:'KAC',n:'Recuperação pós-A3 (200 + 4×50 + 300)',s:'200 EE REC ; 4x50 EST REC "25 C / 25 B" ; 100 L REC PR "lateral" ; 100 L REC "punhos cerrados" ; 100 L REC "resp 5×1"',o:'Séries-tipo Kika (pós-A3)',d:''},
-{id:'RX-04',t:'RX',z:'',p:'KAC',n:'Calmo à escolha',s:'{200-400} EE REC',o:'Estágios',d:''}
+{id:'RX-04',t:'RX',z:'',p:'KAC',n:'Calmo à escolha',s:'{200-400} EE REC',o:'Estágios',d:''},
+// ───────────── KIKA · PERFIL DE PROVA (plano 15/10/2026) ─────────────
+// pr = prova-alvo (200/400/800). "ritmo 400" nas notas → os alvos vêm do 🏁 Perfil de prova.
+{id:'BK-01',t:'P',z:'RITMO',p:'K',f:'EC',pr:'400',fam:'usrpt400',nv:2,n:'USRPT 400 — 50s a ritmo de prova',
+ s:'{20-30}x50 L RITMO @1:00 "ritmo 400 · 30.7–30.9 (PL) · parar à 2.ª falha seguida ou 3.ª no total"',
+ o:'Plano da Kika 2.1 (400L)',d:'Progressão: primeiro mais repetições válidas, depois saída 0:55 e 0:50. Registar o nº de 50s válidos.'},
+{id:'BK-02',t:'P',z:'RITMO',p:'K',f:'EC',pr:'400',fam:'400partido',nv:2,n:'2× 400 partido em 4×100 (10")',
+ s:'2x( 4x100 L RITMO i:10 "ritmo 400 · alvo 1:01.5 cada (só tempo nadado)" ; 400 EE REC "4:00 de recuperação ativa" )',
+ o:'Plano da Kika 2.2 (400L)',d:'Somar o tempo nadado e comparar com 4:03–4:04 (modelo). Use 🧩 Prova partida no Perfil de prova para os alvos por troço.'},
+{id:'BK-03',t:'P',z:'RITMO',p:'K',f:'C',pr:'400',fam:'400partido50',nv:3,n:'400 partido em 8×50 (5–10")',
+ s:'2x( 8x50 L RITMO i:10 "ritmo 400 · 1.º 28.8 · 2.º 30.4 · restantes 30.8" ; 300 EE REC "recuperação ativa" )',
+ o:'Plano da Kika 2.3 (400L)',d:'A versão mais próxima do ritmo real da prova.'},
+{id:'BK-04',t:'P',z:'RITMO',p:'K',f:'EC',pr:'400',fam:'3o100',nv:3,n:'"3.º 100" em fadiga — 200 limiar + 100 ritmo',
+ s:'4x( 200 L A2 "ritmo de limiar (T)" ; 100 L RITMO i:20 "ritmo 400 · 1:01.5–1:02" ; 100 EE REC "1:00 entre séries" )',
+ o:'Plano da Kika 2.4 (400L)',d:'Simula chegar aos 200 m cansada e manter o ritmo onde hoje quebra.'},
+{id:'BK-05',t:'P',z:'RITMO',p:'K',f:'C',pr:'400',fam:'blocomeio',nv:3,n:'Bloco do meio 3×(3×100 @ 1:01.5)',
+ s:'3x( 3x100 L RITMO i:10 "ritmo 400 · 1:01.5" ; 200 EE REC "2:00 entre blocos" )',
+ o:'Plano da Kika 2.5 (400L)',d:'Cada bloco reproduz os 100–400 m da prova-alvo. O pior 100 de cada bloco deve ficar abaixo de 1:02.5.'},
+{id:'BK-06',t:'P',z:'A2',p:'K',f:'GE',pr:'400',fam:'vc200',nv:2,n:'Velocidade crítica 3×(5×200 @ T)',
+ s:'3x( 5x200 L A2 i:15 "a T (≈2:10–2:12)" ; 100 EE REC "1:00 entre séries" )',
+ o:'Plano da Kika 3.1 (base aeróbia)',d:'Os 15×200 dentro de ±1 s. Os alvos usam o T do Perfil de prova.'},
+{id:'BK-07',t:'P',z:'A2',p:'K',f:'GE',pr:'400',fam:'30x100T',nv:2,n:'30×100 @ T (10")',
+ s:'{20-30}x100 L A2 i:10 "a T (≈1:05–1:06) · variação ≤ ±0.5 s"',
+ o:'Plano da Kika 3.2',d:'Quando ficar fácil, baixar 0.5 s ao alvo.'},
+{id:'BK-08',t:'P',z:'A1A2',p:'K',f:'GE',pr:'400',fam:'escadaT',nv:2,n:'Escada de limiar 400-300-200-100 ×2',
+ s:'2x( 400 L A1A2 i:20 "T + 1 s/100" ; 300 L A1A2 i:20 "T + 0.5" ; 200 L A2 i:20 "T" ; 100 L A2 i:20 "T − 0.5" )',
+ o:'Plano da Kika 3.3',d:'Cada patamar 0.5 s/100 mais rápido que o anterior.'},
+{id:'BK-09',t:'P',z:'A1',p:'K',f:'G',pr:'400',fam:'400unif',nv:1,n:'400s uniformes @ T + 2',
+ s:'{8-10}x400 L A1 i:30 "T + 2 s/100 (≈4:28) · os 4 parciais de 100 dentro de 1 s"',
+ o:'Plano da Kika 3.4',d:'Treina a uniformidade que lhe falta em prova.'},
+{id:'BK-10',t:'P',z:'A2',p:'K',f:'GE',pr:'400',fam:'overunder',nv:2,n:'Over-under contínuo 1500',
+ s:'1500 L A2 "alternar 100 @ T − 1 s (≈1:04) e 100 @ T + 4 s (≈1:09)"',
+ o:'Plano da Kika 3.5',d:'Ensina a recuperar a nadar, como precisa entre os 200 e os 350 m.'},
+{id:'BK-11',t:'P',z:'A2',p:'K',f:'GE',pr:'400',fam:'neg400',nv:2,n:'400 em split negativo',
+ s:'{3-4}x400 L A2 i:60 "2.ª metade igual ou mais rápida (ex.: 2:08 / 2:06)"',
+ o:'Plano da Kika 4.1',d:'Começar em ritmo aeróbio e ir baixando ao longo do ciclo.'},
+{id:'BK-12',t:'P',z:'A2',p:'K',f:'GE',pr:'800',fam:'800desc',nv:2,n:'800 descendente por 200',
+ s:'800 L A2 "200 em 2:12 / 2:10 / 2:08 / 2:06"',
+ o:'Plano da Kika 4.2',d:'Treina acelerar quando a fadiga normalmente a faz abrandar.'},
+{id:'BK-13',t:'P',z:'A2',p:'K',f:'EC',pr:'400',fam:'pass150',nv:3,n:'Controlo de passagem aos 150 m',
+ s:'4x400 L A2 i:60 "passagem aos 150 m em 1:29.7–1:30.0 · contar braçadas no 3.º 50"',
+ o:'Plano da Kika 4.4',d:'O controlo é sobre a cadência, não só o tempo.'},
+{id:'BK-14',t:'P',z:'A2',p:'K',f:'GE',pr:'400',fam:'fecho150',nv:2,n:'Manter o fecho 6×(150 + 50 a fundo)',
+ s:'6x( 150 L A1A2 "T + 3 s/100" ; 50 L VEL i:30 "a fundo ≤ 30.0" )',
+ o:'Plano da Kika 4.5',d:'30" entre as partes, 1:00 entre séries.'},
+{id:'BK-15',t:'P',z:'RITMO',p:'K',f:'EC',pr:'200',fam:'usrpt200',nv:2,n:'USRPT 200 — 20×50 @ 29.2–29.5',
+ s:'20x50 L RITMO @1:00 "ritmo 200 · parar à 2.ª falha seguida ou 3.ª no total"',
+ o:'Plano da Kika · 200L 2.1',d:'Em PC descontar ~0.4 s por 50.'},
+{id:'BK-16',t:'P',z:'RITMO',p:'K',f:'EC',pr:'200',fam:'25r200',nv:2,n:'30×25 a ritmo de 200',
+ s:'30x25 L RITMO @0:30 "ritmo 200 · 13.6–13.9"',
+ o:'Plano da Kika · 200L 2.2',d:'Mais volume a velocidade de prova com pouca fadiga.'},
+{id:'BK-17',t:'P',z:'RITMO',p:'K',f:'C',pr:'200',fam:'200partido',nv:3,n:'2× 200 partido em 4×50 (10")',
+ s:'2x( 4x50 L RITMO i:10 "ritmo 200 · 27.5 / 29.2 / 29.5 / 29.3 (≤ 1:55.5 nadado)" ; 400 EE REC "6:00 ativos" )',
+ o:'Plano da Kika · 200L 2.3',d:''},
+{id:'BK-18',t:'P',z:'PL',p:'K',f:'EC',pr:'200',fam:'6x100fundo',nv:3,n:'6×100 a fundo (tolerância láctica)',
+ s:'6x100 L PL @4:30 "a fundo · todos abaixo de 59.5 · recuperação ativa"',
+ o:'Plano da Kika · 200L 3.1',d:''},
+{id:'BK-19',t:'P',z:'PL',p:'K',f:'C',pr:'200',fam:'300fundo',nv:3,n:'2×300 a fundo (passagem aos 200 ≤ 2:01)',
+ s:'2x( 300 L PL "a fundo · passagem aos 200 ≤ 2:01" ; 600 EE REC "10:00 de recuperação" )',
+ o:'Plano da Kika · 200L 3.3',d:''},
+{id:'BK-20',t:'P',z:'RITMO',p:'K',f:'EC',pr:'200',fam:'150p50',nv:2,n:'4×(150 ritmo 200 + 50 a fundo)',
+ s:'4x( 150 L RITMO "ritmo 200" ; 50 L VEL i:15 "a fundo ≤ 29.5" ; 100 EE REC )',
+ o:'Plano da Kika · 200L 4.1',d:'Ensina a acelerar no fim.'},
+{id:'BK-21',t:'P',z:'RITMO',p:'K',f:'EC',pr:'800',fam:'800partido',nv:2,n:'800 partido 8×100 @ 1:04.2',
+ s:'8x100 L RITMO i:10 "ritmo 800 · 1:04.2 · comparar com 8:28–8:30"',
+ o:'Plano da Kika · 800L 2.1',d:''},
+{id:'BK-22',t:'P',z:'RITMO',p:'K',f:'EC',pr:'800',fam:'usrpt800',nv:2,n:'50s a ritmo de 800 (saída 0:45)',
+ s:'{30-40}x50 L RITMO @0:45 "ritmo 800 · 32.0–32.2 · parar à 2.ª falha seguida"',
+ o:'Plano da Kika · 800L 2.2',d:''},
+{id:'BK-23',t:'P',z:'RITMO',p:'K',f:'EC',pr:'800',fam:'4x200r800',nv:2,n:'Blocos de 200 — 4×200 @ 2:08.4',
+ s:'4x200 L RITMO i:15 "ritmo 800 · 2:08.4"',
+ o:'Plano da Kika · 800L 2.3',d:'Cada bloco = um quarto da prova-alvo.'},
+{id:'BK-24',t:'P',z:'RITMO',p:'K',f:'GE',pr:'800',fam:'1500partido',nv:3,n:'1500 partido 15×100 (sobrecarga)',
+ s:'15x100 L RITMO i:10 "ritmo 800 + 0.3 s/50 · 1:04.5"',
+ o:'Plano da Kika · 800L 2.4',d:'Treina manter o ritmo bem para além da distância de prova.'},
+{id:'BK-25',t:'P',z:'A2',p:'K',f:'GE',pr:'800',fam:'800pass',nv:2,n:'800 com passagens (2:04.8 / 4:13.2 / 6:21.6)',
+ s:'2x( 800 L A2 "passagens aos 200/400/600 em 2:04.8 / 4:13.2 / 6:21.6 · desvio máx. ±1 s" ; 200 EE REC )',
+ o:'Plano da Kika · 800L 4.3',d:'Disciplina de saída: 1.º 50 ≥ 29.2.'},
+{id:'BK-26',t:'P',z:'A2',p:'K',f:'G',pr:'800',fam:'20x150T',nv:2,n:'20×150 @ T (saída 1:45)',
+ s:'20x150 L A2 @1:45 "a T"',
+ o:'Plano da Kika · 800L 3.5',d:'Muito volume ao ritmo dos 800 com descanso curto.'},
+{id:'BK-27',t:'POS',z:'viragens',p:'K',f:'GEC',fam:'viragfad',nv:2,n:'Viragens em fadiga 6×25 (5m-in → 10m-out)',
+ s:'6x25 L VEL @0:45 "partida a 15 m da parede · viragem a ritmo de prova · cronometrar 5 m antes → 10 m depois"',
+ o:'Plano da Kika 5.1',d:'Fazer no fim de uma série de ritmo. Alvo: diferença fresca/cansada < 0.1 s.'},
+{id:'BK-28',t:'POS',z:'reg',p:'K',f:'GE',fam:'paredes',nv:1,n:'400 de "paredes rápidas"',
+ s:'{2-3}x400 L A1 i:20 "só o trecho 5 m antes → 10 m depois de cada parede a fundo"',
+ o:'Plano da Kika 5.3',d:'Muito volume de viragens de qualidade com pouco custo.'},
+{id:'BK-29',t:'POS',z:'forca',p:'K',f:'GE',fam:'golf',nv:2,n:'"Golf" 10×50 (tempo + braçadas)',
+ s:'10x50 L A1A2 @1:00 "somar tempo + nº de braçadas · baixar a soma série a série"',
+ o:'Plano da Kika · 800L 6.2',d:''},
+// ───────────── EQUIPA · VARIEDADE DE ELITE ─────────────
+{id:'BE-01',t:'P',z:'A2',p:'KA',f:'GE',fam:'piramDens',nv:2,n:'Pirâmide de densidade 4×(100-200-300)',
+ s:'4x( 100 L A2 @1:20|1:25 ; 200 L A2 @2:35|2:45 ; 300 L A2 @3:50|4:05 ) "a cada volta a saída baixa 5 s"',
+ o:'Biblioteca FOCA (nova)',d:'O ritmo mantém-se; o que muda é a densidade a cada volta.'},
+{id:'BE-02',t:'P',z:'A2',p:'KA',f:'GE',fam:'broken300',nv:2,n:'6×300 partidos 3×100 (10")',
+ s:'6x300 L A2 i:30 "cada 300 partido 3×100 c/ 10\\" · nº de braçadas igual em todos os 100"',
+ o:'Biblioteca FOCA (nova)',d:'Volume a ritmo de limiar com acidose controlada.'},
+{id:'BE-03',t:'P',z:'A3',p:'KA',f:'EC',fam:'a3desc',nv:2,n:'3×(4×100 a descer até A3)',
+ s:'3x( 4x100 L A3 @1:40|1:50 "a descer 1-4: o 4.º ao ritmo de prova de 200" ; 200 EE REC "intervalo 1:00" )',
+ o:'Biblioteca FOCA (nova)',d:''},
+{id:'BE-04',t:'P',z:'A3',p:'KA',f:'EC',fam:'a3broken',nv:3,n:'200 partidos 4×50 (5") × 4',
+ s:'4x( 200 L A3 "partido 4×50 c/ 5\\" · ritmo de prova de 200" ; 200 EE REC "3:00 ativos" )',
+ o:'Biblioteca FOCA (nova)',d:'Somar o tempo nadado: alvo = RP de 200 + 2 s.'},
+{id:'BE-05',t:'P',z:'MPL',p:'KA',f:'C',fam:'mpl75',nv:3,n:'6×75 máximo (saída 4:00)',
+ s:'6x75 E1 MPL @4:00 "máximo · recuperação ativa entre repetições"',
+ o:'Biblioteca FOCA (nova)',d:'Lactato máximo com qualidade técnica.'},
+{id:'BE-06',t:'P',z:'VEL',p:'KA',f:'GEC',fam:'vel1525',nv:1,n:'Sprints 12×15 m + 6×25 de bloco',
+ s:'12x15 E1 VEL @1:00 "máximo de parede" || 6x25 E1 VEL @1:30 "de bloco · máximo"',
+ o:'Biblioteca FOCA (nova)',d:'Recuperação total: a velocidade não se treina cansado.'},
+{id:'BE-07',t:'P',z:'A1A2',p:'KA',f:'G',fam:'mistoTec',nv:1,n:'3×(400 palas + 4×100 técnica/nado)',
+ s:'3x( 400 L A1A2 PALAS PB @5:20|5:40 ; 4x100 E1 A1A2 @1:30|1:40 "25 técnica + 75 nado" )',
+ o:'Biblioteca FOCA (nova)',d:''},
+{id:'BE-08',t:'P',z:'A2',p:'KA',f:'GE',fam:'ladder50',nv:2,n:'Escada 50-100-150-200-150-100-50 ×2',
+ s:'2x( 50 L A2 i:10 ; 100 L A2 i:10 ; 150 L A2 i:15 ; 200 L A2 i:15 ; 150 L A2 i:15 ; 100 L A2 i:10 ; 50 L A2 i:10 )',
+ o:'Biblioteca FOCA (nova)',d:'Mesmo ritmo /100 em todos os degraus.'},
+{id:'BE-09',t:'P',z:'PA',p:'KA',f:'EC',fam:'pa100',nv:3,n:'8×100 potência aeróbia (saída 2:00)',
+ s:'8x100 L PA @2:00|2:10 "constante · o mais rápido que conseguir manter nos 8"',
+ o:'Biblioteca FOCA (nova)',d:''},
+{id:'BE-10',t:'P',z:'A2',p:'KA',f:'GE',fam:'pernasA2',nv:2,n:'Pernas de limiar 4×(4×100)',
+ s:'4x( 4x100 E1 A2 PR @1:55|2:05 ; 100 EE REC )',
+ o:'Biblioteca FOCA (nova)',d:'Volta 1 e 3 com barbatanas, 2 e 4 sem.'},
+{id:'BE-11',t:'AT',z:'qual',p:'KA',f:'GEC',fam:'atRitmo',nv:1,n:'Ativação: 4×(50 A2 + 25 A3) + 4×15 m',
+ s:'4x( 50 L A2 @0:50 ; 25 L A3 @0:30 ) || 4x15 E1 VEL @0:45 "saída do fundo"',
+ o:'Biblioteca FOCA (nova)',d:''},
+{id:'BE-12',t:'AT',z:'rap',p:'KA',f:'EC',fam:'atVel',nv:1,n:'Ativação de velocidade: 6×25 progressivos + 4×15',
+ s:'6x25 E1 A3 @0:40 "progressivos 1-6" || 4x15 E1 VEL @1:00 "máximo"',
+ o:'Biblioteca FOCA (nova)',d:''},
+{id:'BE-13',t:'RX',z:'',p:'KAC',f:'GEC',fam:'rxTec',nv:1,n:'Relaxamento técnico 300',
+ s:'300 EE REC "100 costas braço duplo · 100 bruços deslize longo · 100 crol resp 5"',
+ o:'Biblioteca FOCA (nova)',d:''},
+{id:'BE-14',t:'RX',z:'',p:'KAC',f:'GEC',fam:'rxPernas',nv:1,n:'Relaxamento 200 + 4×50 soltos',
+ s:'200 EE REC "muito solto" ; 4x50 EE REC "costas / bruços alternados"',
+ o:'Biblioteca FOCA (nova)',d:''}
 ];
 
 // ═══ MOTOR DE SÉRIES (biblioteca SP_LIB + histórico do treinador) ═══════════════
@@ -27941,7 +28073,7 @@ function pfMetricas(prova,s){
 // A2 → T · A1 A2 → T + 1 s/100 · A1 → T + 2 s/100  (se "usar T" estiver ligado)
 function pfProvaDoTexto(t){var m=String(t||'').match(/(?:ritmo|r\.?p\.?|prova)\s*(?:de\s*)?(200|400|800)/i);return m?m[1]:null;}
 function pfAlvoParte(nadId,intens,dist,estilo,piscina,obs){
-  var P=D.perfilProva; if(!P||!pfEhKika(nadId)||!dist) return null;
+  var P=D.perfilProva||(typeof pfKika==='function'&&pfKika()&&pfKika().id===nadId?pfDados(true):null); if(!P||!pfEhKika(nadId)||!dist) return null;
   if(estilo&&!anEhCrol(estilo)) return null;
   var z=anNormInt(intens||''), pis=pfPisDe(piscina);
   if(z==='RITMO'){var pr=pfProvaDoTexto(obs)||P.provaRef||'400';var m=pfMeio(pr,pis);return {secs:m*dist/50, fonte:'perfil '+pr+' ('+pis+')'};}
@@ -28166,6 +28298,320 @@ function pfExportXLS(){
     var fi=gi('pfFile'); if(fi) fi.addEventListener('change',function(){if(this.files&&this.files[0])pfImportar(this.files[0]);this.value='';});
     bon('btnPfImp',function(){gi('pfFile').click();});
     if(typeof xpBotoes==='function'){var m=gi('mPerfil');xpBotoes(m&&m.querySelector('.ma'),'btnPfX',pfExportPDF,function(){return xpNomeFich(pfTitulo());});}
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',wire); else wire();
+})();
+
+</script>
+<style>
+.bib-alvo{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}.bib-alvo .fse{width:auto;min-width:260px}
+.bib-ok{background:rgba(0,229,160,.10);border:1px solid rgba(0,229,160,.35);border-radius:10px;padding:8px 10px;margin-bottom:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px}
+.bib-f{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px}.bib-f .fse,.bib-f .fi{width:auto;padding:6px 8px;font-size:12px}
+.bib-f #bibQ{min-width:240px;flex:1}.bib-num{width:62px!important}
+.bib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:10px}
+.bib-card{border:1px solid var(--b);border-radius:12px;padding:10px 12px;background:rgba(0,194,255,.03);display:flex;flex-direction:column}
+.bib-h{display:flex;gap:8px;align-items:flex-start}.bib-n{font-weight:700;font-size:14px}
+.bib-star{background:none;border:none;font-size:18px;cursor:pointer;color:var(--wd);padding:0 2px}.bib-star.on{color:#f5c842}
+.bib-vol{font-weight:800;font-size:13px;white-space:nowrap}.bib-vsel{width:auto!important;padding:3px 6px!important;font-size:12px!important}
+.bib-ln{font-family:ui-monospace,Menlo,monospace;font-size:12px;line-height:1.55;margin-top:8px;flex:1}
+.bib-alvo-t{color:#f5c842;font-weight:700;white-space:nowrap}
+.bib-a{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.bib-ask{position:absolute;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:5;border-radius:inherit}
+.bib-ask-in{background:var(--m);border:1px solid var(--b);border-radius:12px;padding:16px;max-width:360px;width:90%}
+@media(max-width:600px){.bib-grid{grid-template-columns:1fr}.bib-alvo .fse{min-width:0;width:100%}}
+</style>
+<div class="mo" id="mBib"><div class="md mw" style="width:1200px;position:relative">
+  <div class="mt" id="bibT">📚 Biblioteca de treino</div><div id="bibBody"></div>
+  <div class="ma"><button class="btn bg" id="btnBibClose">Fechar</button></div>
+</div></div>
+<script>
+// ═══ 📚 BIBLIOTECA DE TREINO — aquecimentos, ativações, séries principais, complementos ═══
+// Fontes: SP_LIB (séries do treinador, estágios e novas) + as séries guardadas pelo treinador
+// (D.bibTreino) + aquecimentos gerados (🎲). Favoritos em D.bibFav.
+// "➕ Adicionar ao próximo treino": aquecimento/ativação/relaxamento substituem a secção;
+// série principal pergunta (substituir ou juntar); complementos juntam-se à série principal.
+// Se o treino ainda não existir, é criado com a Dinâmica Semanal desse dia (proposta da Análise).
+//   D.bibTreino = [{id:'U-…', t:'AQ'|'AT'|'P'|'POS'|'RX', n, z, blocks:[…], d, para:'kika'|'equipa'|'', criadoEm}]
+//   D.bibFav = {id:1}
+var BIB_TABS=[['AQ','🌊 Aquecimentos'],['AT','⚡ Ativações'],['P','🔥 Séries principais'],['X','🧩 Complementos e relaxamento']];
+var BIB_SEC={AQ:'aq',AT:'at',P:'pr',POS:'pr',RX:'rx'};
+var BIB={tab:'P', zona:'', fase:'', para:'', prova:'', vmin:'', vmax:'', mat:'', est:'', origem:'', semUso:'', q:'', modo:'analise', sec:null, alvo:null, vol:{}, gerados:[], desfazer:null};
+function bibUser(){if(!D.bibTreino)D.bibTreino=[];return D.bibTreino;}
+function bibFav(){if(!D.bibFav)D.bibFav={};return D.bibFav;}
+function bibKey(){
+  var ki=(typeof kkInfo==='function')?kkInfo():null; if(ki) return ki.key;
+  var e=currentEscalao||''; return (e&&e!=='todos'&&e.indexOf('ind:')<0)?e:'';
+}
+function bibPerfil(key){try{return anCtxKey(key).perfil;}catch(e){return '';}}
+// RP mediano da equipa por zona (como nas propostas) — para calcular saídas e tempos-alvo
+function bibRP(key,pis){
+  var perfil=bibPerfil(key), nads=key?mpNadadoresEquipa(key):[], cache={};
+  var rp=function(z){
+    var dists=anDistsZona(perfil,z), k=dists.join('-'); if(cache[k]!==undefined) return cache[k];
+    var res=null;
+    for(var i=0;i<dists.length&&!res;i++){var arr=[];nads.forEach(function(n){var x=anRPRef(n.id,'Crol',pis||'25m',[dists[i]]);if(x)arr.push(x.secs);});if(arr.length)res={secs:anMedian(arr),dist:dists[i]};}
+    cache[k]=res; return res;
+  };
+  rp.perfil=perfil; rp.key=key; return rp;
+}
+// Lista unificada de entradas
+function bibEntradas(){
+  var out=[];
+  (typeof SP_LIB!=='undefined'?SP_LIB:[]).forEach(function(e){
+    out.push({id:e.id, t:e.t, z:e.z||'', p:e.p||'KAC', f:e.f||'', pr:e.pr||'', n:e.n, o:e.o||'', d:e.d||'', s:e.s, src:/^B[KE]-/.test(e.id)?'nova':'treinador', nv:e.nv||1});
+  });
+  bibUser().forEach(function(u){out.push({id:u.id, t:u.t, z:u.z||'', p:u.para==='kika'?'K':(u.para==='equipa'?'AC':'KAC'), f:'', pr:'', n:u.n, o:'As minhas séries', d:u.d||'', blocks:u.blocks, src:'minha', nv:1});});
+  BIB.gerados.forEach(function(g){out.push({id:g.id, t:g.t, z:g.z||'', p:'KAC', f:'', pr:'', n:g.n, o:'Composição nova (🎲)', d:'', blocks:g.blocks, src:'gerada', nv:1});});
+  return out;
+}
+// Volumes possíveis de uma entrada com repetições variáveis ({a-b})
+function bibVolumes(e,o){
+  if(e.blocks) return [anSecVol(e.blocks)];
+  var ast=spParse(e.s), vals=[[]], vs={};
+  ast.vars.forEach(function(v){var nv=[];vals.forEach(function(c){for(var x=v.min;x<=v.max;x+=v.step)nv.push(c.concat([x]));});vals=nv.slice(0,200);});
+  vals.forEach(function(c){c.forEach(function(x,i){ast.vars[i].val=x;});vs[anSecVol(spInstanciar(ast,{perfil:o.perfil}))]=1;});
+  return Object.keys(vs).map(Number).sort(function(a,b){return a-b;});
+}
+function bibInstanciar(e,ctx){
+  if(e.blocks) return JSON.parse(JSON.stringify(e.blocks));
+  var ast=spParse(e.s), V=BIB.vol[e.id];
+  if(V) return spAjustar(ast,V,{perfil:ctx.perfil,rp:ctx.rp}).blocks;
+  if(ast.vars.length){var vols=bibVolumes(e,ctx);return spAjustar(ast,vols[Math.floor((vols.length-1)/2)],{perfil:ctx.perfil,rp:ctx.rp}).blocks;}
+  return spInstanciar(ast,{perfil:ctx.perfil,rp:ctx.rp});
+}
+// Tempo-alvo de um exercício para a equipa (Kika: perfil de prova/T/RP; equipa: RP mediano)
+function bibAlvoEx(e,ctx){
+  if(!e||!e.dist||!e.intensidade) return null;
+  if(/REC/i.test(e.intensidade)||e.tipoNado==='Técnica') return null;
+  try{
+    if(ctx.kika){var a=anAlvo(ctx.kika.id,{int:anNormInt(e.intensidade),dist:parseInt(e.dist,10),estilo:e.estilo||'Crol',obs:e.obs||''},ctx.pis||'',null);return a?a.secs:null;}
+    if(e.estilo&&!anEhCrol(e.estilo)) return null;
+    var r=ctx.rp(anNormInt(e.intensidade)); if(!r) return null;
+    var c=ritmosCalcAlvoExercicio(anNormInt(e.intensidade),parseInt(e.dist,10),r.dist,r.secs); return c?c.tRep:null;
+  }catch(x){return null;}
+}
+// Última utilização (pela forma da secção nos treinos guardados)
+function bibUsos(){
+  var m={};
+  (D.sessoes||[]).forEach(function(s){if(!s.series||Array.isArray(s.series)||!s.data)return;['aq','at','pr','rx'].forEach(function(k){var f=spForma(s.series[k]);if(f&&(!m[f]||m[f]<s.data))m[f]=s.data;(s.series[k]||[]).forEach(function(b){var fb=spForma([b]);if(fb&&(!m[fb]||m[fb]<s.data))m[fb]=s.data;});});});
+  return m;
+}
+// Treinos-alvo: próximos 7 dias (sessões já criadas + treinos da Dinâmica ainda por criar)
+function bibAlvos(key){
+  var out=[], hoje=mpHojeISO(), h=new Date().getHours(), tokens=key?[key]:[];
+  for(var k=0;k<=7;k++){
+    var d=anDateAdd(hoje,k);
+    ['m','t'].forEach(function(per){
+      if(k===0&&per==='m'&&h>=13) return;
+      var s=anSessoesEquipa(tokens).filter(function(x){return x.data===d&&anSlotSessao(x)===per&&x.series&&!Array.isArray(x.series);})[0];
+      if(s){out.push({data:d,per:per,sid:s.id,lbl:anDateLbl(d)+' · '+(per==='m'?'manhã':'tarde')+' — '+(s.nome||'treino')});return;}
+      var din=anDinDia(key,d), dp=din?anDinPer(din,per):null;
+      if(dp&&(dp.vol>0||dp.ints.length)) out.push({data:d,per:per,sid:null,lbl:anDateLbl(d)+' · '+(per==='m'?'manhã':'tarde')+' — a criar ('+(dp.vol?dp.vol.toLocaleString('pt-PT')+' m · ':'')+dp.ints.join('/')+')'});
+    });
+  }
+  return out;
+}
+function bibCtx(){
+  var key=bibKey(), alvo=BIB.alvo, pis='';
+  if(BIB.modo==='editor') pis=(gi('sPiscina')||{}).value||'';
+  else if(alvo&&alvo.sid){var s=(D.sessoes||[]).find(function(x){return x.id===alvo.sid;});pis=(s&&s.piscina)||'';}
+  var ki=(typeof kkInfo==='function')?kkInfo():null;
+  return {key:key, perfil:bibPerfil(key), rp:bibRP(key,pis||'25m'), pis:pis, kika:ki?ki.nad:null};
+}
+function bibFiltrar(lista,usos,ctx){
+  var B=BIB, hoje=mpHojeISO(), fav=bibFav();
+  return lista.filter(function(e){
+    if(B.tab==='X'){if(e.t!=='POS'&&e.t!=='RX')return false;} else if(e.t!==B.tab) return false;
+    if(B.zona&&e.t==='P'){var zz=String(e.z||'').replace('A1A2','A1 A2');if(zz!==B.zona&&!(B.zona==='PL'&&/^(PL|TL|MPL)$/.test(zz)))return false;}
+    if(B.zona&&e.t!=='P'&&e.t!=='POS'&&e.t!=='RX'){var cat=spCatZona(B.zona);if(e.z&&e.z!==cat&&!(cat==='qual'&&e.z==='aer'))return false;}
+    if(B.fase&&e.f&&e.f.indexOf(B.fase)<0) return false;
+    if(B.para==='kika'&&e.p.indexOf('K')<0) return false;
+    if(B.para==='equipa'&&!/[AC]/.test(e.p)) return false;
+    if(B.prova&&e.t==='P'&&e.pr!==B.prova) return false;
+    if(B.origem==='fav'&&!fav[e.id]) return false;
+    if(B.origem&&B.origem!=='fav'&&e.src!==B.origem) return false;
+    var txt=(e.n+' '+(e.s||'')+' '+e.o+' '+e.d).toLowerCase();
+    if(B.q&&txt.indexOf(B.q.toLowerCase())<0) return false;
+    if(B.mat&&txt.indexOf(B.mat.toLowerCase())<0&&!(e.s&&new RegExp('\\b'+({barbatanas:'BB',palas:'PALAS',pullboy:'PB',paraquedas:'PARAQ',elásticos:'ELAST',tubo:'TUBO'})[B.mat]+'\\b').test(e.s))) return false;
+    if(B.est){var map={estilos:/\b(EST|E)\b|estilos/i,e1:/\bE1\b|especialidade/i,crol:/\bL\b|crol/i};if(map[B.est]&&!map[B.est].test(e.s||e.n))return false;}
+    e._bl=bibInstanciar(e,ctx); e._vol=anSecVol(e._bl);
+    if(B.vmin&&e._vol<+B.vmin) return false; if(B.vmax&&e._vol>+B.vmax) return false;
+    var f=spForma(e._bl); e._uso=usos[f]||null;
+    if(B.semUso&&e._uso&&anDateDiff(e._uso,hoje)<+B.semUso*7) return false;
+    return true;
+  }).sort(function(a,b){
+    var pr=function(e){return (e.src==='gerada'?8:0)+(fav[e.id]?4:0)+(e.src==='minha'?2:0);};
+    var d=pr(b)-pr(a); if(d) return d;
+    var ua=a._uso||'', ub=b._uso||''; return ua===ub?0:(ua<ub?-1:1); // nunca usadas / usadas há mais tempo primeiro
+  });
+}
+function bibAbrir(modo,sec){
+  BIB.modo=modo||'analise'; BIB.sec=sec||null; BIB.desfazer=null;
+  if(sec) BIB.tab=({aq:'AQ',at:'AT',pr:'P',rx:'X'})[sec]||'P';
+  if(BIB.modo==='analise'){var key=bibKey();if(!key){toast('Escolha uma equipa (ou a Kika) na barra lateral','error');return;}var al=bibAlvos(key);BIB.alvos=al;if(!BIB.alvo||!al.some(function(a){return a.data===BIB.alvo.data&&a.per===BIB.alvo.per;}))BIB.alvo=al[0]||null;}
+  bibRender(); openM('mBib');
+}
+function bibRender(){
+  var B=BIB, ctx=bibCtx(), usos=bibUsos(), fav=bibFav(), lista=bibFiltrar(bibEntradas(),usos,ctx), h='';
+  gi('bibT').textContent='📚 Biblioteca de treino'+(B.modo==='editor'?' · '+({aq:'Aquecimento',at:'Ativação',pr:'Série principal',rx:'Relaxamento'})[B.sec]:' · '+anCtxKey(ctx.key).lbl);
+  if(B.modo==='analise'){
+    h+='<div class="bib-alvo"><label class="fl" style="margin:0">Adicionar a</label><select class="fse" id="bibAlvo">'+(B.alvos||[]).map(function(a,i){return '<option value="'+i+'"'+(B.alvo&&a.data===B.alvo.data&&a.per===B.alvo.per?' selected':'')+'>'+anEsc(a.lbl)+'</option>';}).join('')+(!(B.alvos||[]).length?'<option>Sem treinos nos próximos 7 dias (Dinâmica vazia)</option>':'')+'</select>'
+      +'<span class="an-sub">Aquecimento, ativação e relaxamento substituem a secção · série principal pergunta · complementos juntam-se à série principal</span></div>';
+  } else h+='<div class="bib-alvo an-sub">O bloco entra no treino que está a editar ('+(B.sec==='pr'?'pergunta se substitui ou junta':(B.sec==='pr'?'':'substitui a secção'))+'). Só fica gravado quando guardar a sessão.</div>';
+  if(B.desfazer) h+='<div class="bib-ok">✅ '+anEsc(B.desfazer.msg)+' <button class="btn bs bg" id="bibUndo">↩️ Anular</button>'+(B.desfazer.sid?'<button class="btn bs bg" id="bibVer">✏️ Abrir o treino</button>':'')+'</div>';
+  h+='<div class="rl-tabs" style="margin:8px 0">'+BIB_TABS.map(function(t){return '<button class="btn bs '+(B.tab===t[0]?'bp':'bg')+'" data-bib-tab="'+t[0]+'">'+t[1]+'</button>';}).join('')+'</div>';
+  var sel=function(id,val,opts){return '<select class="fse" id="'+id+'">'+opts.map(function(o){return '<option value="'+o[0]+'"'+(val===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>';};
+  h+='<div class="bib-f">'
+    +'<input class="fi" id="bibQ" placeholder="🔎 procurar (ex.: palas, escada, 800, broken…)" value="'+anEsc(B.q)+'">'
+    +sel('bibZona',B.zona,[['','Intensidade: todas']].concat(['A1','A1 A2','A2','A3','PA','PL','RITMO','VEL'].map(function(z){return [z,z==='PL'?'PL / TL / MPL':z];})))
+    +sel('bibFase',B.fase,[['','Fase: todas'],['G','Geral'],['E','Específica'],['C','Competitiva'],['T','Taper']])
+    +sel('bibPara',B.para,[['','Para: todos'],['kika','Kika'],['equipa','Equipa']])
+    +sel('bibProva',B.prova,[['','Prova-alvo: todas'],['200','200 L (Kika)'],['400','400 L (Kika)'],['800','800 L (Kika)']])
+    +sel('bibMat',B.mat,[['','Material: todos'],['palas','Palas'],['pullboy','Pullboy'],['barbatanas','Barbatanas'],['paraquedas','Paraquedas'],['elásticos','Elásticos'],['tubo','Tubo']])
+    +sel('bibEst',B.est,[['','Estilo: todos'],['crol','Crol'],['estilos','Estilos'],['e1','E1 / especialidade']])
+    +sel('bibOrig',B.origem,[['','Origem: todas'],['fav','⭐ Favoritos'],['minha','As minhas'],['treinador','Estágios / histórico'],['nova','Novas'],['gerada','Geradas 🎲']])
+    +sel('bibUso',B.semUso,[['','Uso: qualquer'],['2','Não usadas há 2+ semanas'],['4','… há 4+ semanas'],['8','… há 8+ semanas']])
+    +'<span class="an-sub">Volume</span><input class="fi bib-num" id="bibVmin" placeholder="de" value="'+anEsc(B.vmin)+'"><input class="fi bib-num" id="bibVmax" placeholder="até" value="'+anEsc(B.vmax)+'">'
+    +(B.tab==='AQ'||B.tab==='AT'?'<button class="btn bs" id="bibGerar" style="background:linear-gradient(135deg,#a855f7,#3b82f6);color:#fff">🎲 Gerar mais 5</button>':'')
+    +'<button class="btn bs bg" id="bibLimpar">✕ Limpar filtros</button></div>';
+  h+='<div class="an-sub" style="margin:4px 0 8px">'+lista.length+' resultado(s) · tempos e saídas calculados para '+anEsc(anCtxKey(ctx.key).lbl||'a equipa')+(ctx.pis?' (piscina '+ctx.pis+')':'')+' · ⭐ = favorito</div>';
+  h+='<div class="bib-grid">'+lista.slice(0,60).map(function(e){return bibCartao(e,ctx,fav);}).join('')+'</div>';
+  if(lista.length>60) h+='<div class="an-sub">Mostrar só os primeiros 60 — afine os filtros.</div>';
+  if(!lista.length) h+='<div class="an-empty" style="padding:24px;text-align:center">Nada com estes filtros.</div>';
+  gi('bibBody').innerHTML=h; bibWire();
+}
+function bibCartao(e,ctx,fav){
+  var lines=[];
+  (e._bl||[]).filter(Boolean).forEach(function(b){
+    var v=parseInt(b.voltas)||1, ex=(b.exercises||[]).filter(function(x){return x&&x.dist;}).map(function(x){var a=(e.t==='P'||e.t==='POS')?bibAlvoEx(x,ctx):null;return anEsc(anDescEx(x))+(a?' <span class="bib-alvo-t">🎯 '+ritmosFormatTime(a,1)+'</span>':'');});
+    if(v>1) lines.push('<b>'+v+'×</b> ( '+ex.join(' + ')+' )'); else lines=lines.concat(ex);
+  });
+  var vols=e.s?bibVolumes(e,ctx):[e._vol];
+  var zz=String(e.z||'').replace('A1A2','A1 A2'), cor=(typeof reZonaCor==='function'&&e.t==='P')?reZonaCor(zz==='PL'?'PL/TL':zz):null;
+  return '<div class="bib-card">'
+    +'<div class="bib-h"><button type="button" class="bib-star'+(fav[e.id]?' on':'')+'" data-bib-fav="'+anEsc(e.id)+'" title="Favorito">'+(fav[e.id]?'⭐':'☆')+'</button>'
+    +'<div style="flex:1;min-width:0"><div class="bib-n">'+anEsc(e.n)+'</div><div class="an-sub">'+(cor?'<span class="re-z" style="background:'+cor.bg+';color:'+cor.fg+'">'+anEsc(zz)+'</span> ':'')+(e.pr?'🏁 '+e.pr+' L · ':'')+anEsc(e.o)+(e._uso?' · usada '+anDateLbl(e._uso):' · nunca usada')+'</div></div>'
+    +'<div class="bib-vol">'+(vols.length>1?'<select class="fse bib-vsel" data-bib-vol="'+anEsc(e.id)+'">'+vols.map(function(v){return '<option value="'+v+'"'+(v===e._vol?' selected':'')+'>'+v.toLocaleString('pt-PT')+' m</option>';}).join('')+'</select>':e._vol.toLocaleString('pt-PT')+' m')+'</div></div>'
+    +'<div class="bib-ln">'+lines.join('<br>')+'</div>'
+    +(e.d?'<div class="an-sub" style="margin-top:4px">💡 '+anEsc(e.d)+'</div>':'')
+    +'<div class="bib-a"><button class="btn bs bp" data-bib-add="'+anEsc(e.id)+'">'+(BIB.modo==='editor'?'➕ Usar neste treino':'➕ Adicionar ao próximo treino')+'</button>'
+    +(e.src==='gerada'?'<button class="btn bs bg" data-bib-save="'+anEsc(e.id)+'">💾 Guardar nas minhas</button>':'')
+    +(e.src==='minha'?'<button class="btn bs bd" data-bib-del="'+anEsc(e.id)+'">🗑️</button>':'')+'</div></div>';
+}
+function bibWire(){
+  var b=gi('bibBody'), B=BIB;
+  b.querySelectorAll('[data-bib-tab]').forEach(function(x){x.addEventListener('click',function(){B.tab=this.getAttribute('data-bib-tab');bibRender();});});
+  var on=function(id,k,ev){var el=gi(id);if(el)el.addEventListener(ev||'change',function(){B[k]=this.value;bibRender();if(ev==='input'){var n=gi(id);if(n){n.focus();n.setSelectionRange(n.value.length,n.value.length);}}});};
+  on('bibZona','zona');on('bibFase','fase');on('bibPara','para');on('bibProva','prova');on('bibMat','mat');on('bibEst','est');on('bibOrig','origem');on('bibUso','semUso');on('bibVmin','vmin');on('bibVmax','vmax');
+  var q=gi('bibQ'); if(q){var tq;q.addEventListener('input',function(){clearTimeout(tq);var v=this.value;tq=setTimeout(function(){B.q=v;bibRender();var n=gi('bibQ');if(n){n.focus();n.setSelectionRange(n.value.length,n.value.length);}},350);});}
+  var al=gi('bibAlvo'); if(al) al.addEventListener('change',function(){B.alvo=(B.alvos||[])[+this.value]||null;bibRender();});
+  bon('bibLimpar',function(){['zona','fase','para','prova','vmin','vmax','mat','est','origem','semUso','q'].forEach(function(k){B[k]='';});bibRender();});
+  bon('bibGerar',bibGerar);
+  bon('bibUndo',bibAnular);
+  bon('bibVer',function(){var sid=B.desfazer&&B.desfazer.sid;if(!sid)return;closeM('mBib');if(typeof editS==='function')editS(sid);});
+  b.querySelectorAll('[data-bib-fav]').forEach(function(x){x.addEventListener('click',function(){var id=this.getAttribute('data-bib-fav'),f=bibFav();if(f[id])delete f[id];else f[id]=1;save();bibRender();});});
+  b.querySelectorAll('[data-bib-vol]').forEach(function(x){x.addEventListener('change',function(){B.vol[this.getAttribute('data-bib-vol')]=parseInt(this.value,10);bibRender();});});
+  b.querySelectorAll('[data-bib-add]').forEach(function(x){x.addEventListener('click',function(){bibAdicionar(this.getAttribute('data-bib-add'));});});
+  b.querySelectorAll('[data-bib-save]').forEach(function(x){x.addEventListener('click',function(){var g=B.gerados.find(function(y){return y.id===x.getAttribute('data-bib-save');});if(!g)return;bibUser().push({id:'U-'+gid(),t:g.t,n:g.n,z:g.z,blocks:JSON.parse(JSON.stringify(g.blocks)),d:'',para:'',criadoEm:new Date().toISOString()});save();toast('Guardado nas minhas séries','success');B.gerados=B.gerados.filter(function(y){return y.id!==g.id;});bibRender();});});
+  b.querySelectorAll('[data-bib-del]').forEach(function(x){x.addEventListener('click',function(){var id=this.getAttribute('data-bib-del');if(!confirm('Apagar esta série da biblioteca?'))return;D.bibTreino=bibUser().filter(function(u){return u.id!==id;});save();bibRender();});});
+}
+function bibGerar(){
+  var ctx=bibCtx(), alvo=BIB.alvo, din=null, dp=null;
+  if(alvo){din=anDinDia(ctx.key,alvo.data);dp=din?anDinPer(din,alvo.per):null;}
+  var zona=dp&&dp.ints&&dp.ints.length?dp.ints[dp.ints.length-1]:'A2';
+  var L=gnAquecimentos({key:ctx.key+'|'+Date.now(),data:(alvo&&alvo.data)||mpHojeISO(),per:(alvo&&alvo.per)||'m',cat:spCatZona(zona),Vaq:800,Vat:500,rp:ctx.rp,evitar:{},n:5,semente:Date.now()%100000});
+  // semente diferente a cada clique
+  L.forEach(function(g,i){
+    var id='G-'+Date.now().toString(36)+i;
+    if(BIB.tab==='AQ') BIB.gerados.push({id:id+'a',t:'AQ',n:'🎲 '+g.nome,z:spCatZona(zona),blocks:g.aq});
+    else if(g.at) BIB.gerados.push({id:id+'t',t:'AT',n:'🎲 '+g.atNome,z:spCatZona(zona),blocks:g.at});
+  });
+  BIB.origem=''; bibRender(); toast('5 composições novas no topo da lista','success');
+}
+// ── Adicionar ──
+function bibAdicionar(id){
+  var e=bibEntradas().find(function(x){return x.id===id;}); if(!e) return;
+  var ctx=bibCtx(), bl=bibInstanciar(e,ctx), sec=BIB_SEC[e.t]||'pr', modo=(e.t==='P')?null:(e.t==='POS'?'juntar':'substituir');
+  var faz=function(m){
+    if(BIB.modo==='editor') bibNoEditor(sec,bl,m,e);
+    else bibNoTreino(sec,bl,m,e);
+  };
+  if(modo) faz(modo);
+  else bibPerguntar(function(m){faz(m);});
+}
+function bibPerguntar(cb){
+  var box=document.createElement('div'); box.className='bib-ask';
+  box.innerHTML='<div class="bib-ask-in"><b>Série principal</b><div class="an-sub" style="margin:6px 0 10px">Substituir a série principal do treino ou juntar no fim?</div><div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><button class="btn bs bg" data-a="x">Cancelar</button><button class="btn bs bg" data-a="juntar">➕ Juntar no fim</button><button class="btn bs bp" data-a="substituir">🔁 Substituir</button></div></div>';
+  gi('mBib').querySelector('.md').appendChild(box);
+  box.querySelectorAll('[data-a]').forEach(function(x){x.addEventListener('click',function(){var a=this.getAttribute('data-a');box.remove();if(a!=='x')cb(a);});});
+}
+function bibNoEditor(sec,bl,modo,e){
+  if(typeof secBlocks==='undefined') return;
+  if(modo==='substituir') secBlocks[sec]=JSON.parse(JSON.stringify(bl));
+  else secBlocks[sec]=(secBlocks[sec]||[]).concat(JSON.parse(JSON.stringify(bl)));
+  var c=gi('sec-'+sec); if(c) c.innerHTML='';
+  secBlocks[sec].forEach(function(b,bi){renderBlock(sec,bi);});
+  if(typeof updPrev==='function') updPrev();
+  closeM('mBib'); toast('«'+e.n+'» '+(modo==='substituir'?'substituiu a secção':'juntou-se à secção')+' — guarde a sessão para gravar','success');
+}
+function bibNoTreino(sec,bl,modo,e){
+  var alvo=BIB.alvo, key=bibKey();
+  if(!alvo){toast('Não há treino nos próximos 7 dias para esta equipa','error');return;}
+  var s=alvo.sid?(D.sessoes||[]).find(function(x){return x.id===alvo.sid;}):null, criada=false;
+  if(!s){
+    // Criar o treino a partir da Dinâmica (mesmo motor das propostas da Análise)
+    var ctxA=mpContexto(key), pr=anPrescrever(ctxA.an,ctxA.carga,{slot:{data:alvo.data,per:alvo.per},semAnalise:ctxA.semAnalise,tendencia:ctxA.tendencia});
+    var ser=pr&&pr.sessao?JSON.parse(JSON.stringify(pr.sessao)):{aq:[],at:[],pr:[],rx:[]};
+    var dt=new Date(alvo.data);
+    s={id:gid(), nome:'Treino · '+(pr.zona||'')+' · '+anDateLbl(alvo.data)+' '+(alvo.per==='m'?'manhã':'tarde'), tipo:(['A1','A1 A2','A2','A3','MPL','PL','TL','RITMO','VEL'].indexOf(pr.zona)>=0?pr.zona:'A2'), data:alvo.data, dia:(dt.getDay()+6)%7,
+      hora:pr.hora||(alvo.per==='m'?'07:00':'18:00'), equipa:key, macro:'', micro:pr.micro?String(pr.micro):'', piscina:'',
+      series:{aq:ser.aq||[],at:ser.at||[],pr:ser.pr||[],rx:ser.rx||[]}, notas:'🧠 Criado pela Biblioteca de treino a partir da Dinâmica Semanal ('+anDateLbl(mpHojeISO())+').\n'+((pr.razoes||[]).map(function(x){return '• '+x;}).join('\n'))};
+    D.sessoes.push(s); criada=true;
+  }
+  var antes=JSON.parse(JSON.stringify(s.series||{aq:[],at:[],pr:[],rx:[]}));
+  if(!s.series||Array.isArray(s.series)) s.series={aq:[],at:[],pr:[],rx:[]};
+  s.series[sec]=modo==='substituir'?JSON.parse(JSON.stringify(bl)):(s.series[sec]||[]).filter(Boolean).concat(JSON.parse(JSON.stringify(bl)));
+  s.notas=(s.notas?s.notas+'\n':'')+'📚 '+({aq:'Aquecimento',at:'Ativação',pr:'Série principal',rx:'Relaxamento'})[sec]+': «'+e.n+'» ('+e.o+')';
+  save(); try{if(typeof rWk==='function')rWk();if(typeof rSLst==='function')rSLst();if(typeof rDash==='function')rDash();}catch(x){}
+  BIB.desfazer={sid:s.id, criada:criada, antes:antes, notasAntes:null, msg:'«'+e.n+'» '+(criada?'— treino criado em ':'adicionado a ')+anDateLbl(alvo.data)+' '+(alvo.per==='m'?'manhã':'tarde')+(modo==='substituir'?' (substituiu a secção)':' (no fim da secção)')};
+  BIB.alvos=bibAlvos(key); BIB.alvo=BIB.alvos.find(function(a){return a.data===alvo.data&&a.per===alvo.per;})||BIB.alvo;
+  toast('Adicionado ao treino de '+anDateLbl(alvo.data),'success'); bibRender();
+  try{if(gi('pg-analise')&&gi('pg-analise').classList.contains('on')&&typeof rAnalise==='function')rAnalise();}catch(x){}
+}
+function bibAnular(){
+  var u=BIB.desfazer; if(!u) return;
+  if(u.criada) D.sessoes=(D.sessoes||[]).filter(function(x){return x.id!==u.sid;});
+  else {var s=(D.sessoes||[]).find(function(x){return x.id===u.sid;});if(s){s.series=u.antes;s.notas=String(s.notas||'').replace(/\n?📚 [^\n]*$/,'');}}
+  save(); try{if(typeof rWk==='function')rWk();if(typeof rSLst==='function')rSLst();}catch(x){}
+  BIB.desfazer=null; BIB.alvos=bibAlvos(bibKey()); toast('Anulado','info'); bibRender();
+}
+// 💾 Guardar uma secção de um treino na biblioteca (editor de sessões)
+function bibGuardarSecao(sec){
+  if(typeof secBlocks==='undefined'||!(secBlocks[sec]||[]).filter(Boolean).length){toast('Esta secção está vazia','error');return;}
+  var nome=prompt('Nome para guardar na biblioteca:',({aq:'Aquecimento',at:'Ativação',pr:'Série principal',rx:'Relaxamento'})[sec]+' · '+((gi('sNome')||{}).value||''));
+  if(!nome) return;
+  var bl=JSON.parse(JSON.stringify(secBlocks[sec].filter(Boolean)));
+  var zs=[]; bl.forEach(function(b){(b.exercises||[]).forEach(function(e){var z=anNormInt(e.intensidade||'');if(z&&zs.indexOf(z)<0)zs.push(z);});});
+  var top=zs.slice().sort(function(a,b){return anIntRank(b)-anIntRank(a);})[0]||'';
+  var t=({aq:'AQ',at:'AT',pr:'P',rx:'RX'})[sec];
+  bibUser().push({id:'U-'+gid(), t:t, n:nome, z:t==='P'?top.replace('A1 A2','A1A2'):(t==='RX'?'':spCatZona(top||'A1')), blocks:bl, d:'', para:(typeof kkInfo==='function'&&kkInfo())?'kika':'', criadoEm:new Date().toISOString()});
+  save(); toast('Guardado na biblioteca (As minhas)','success');
+}
+(function bibInit(){
+  function wire(){
+    // Botão na Análise
+    var ref=gi('btnAnMicro');
+    if(ref&&!gi('btnAnBib')){var b=document.createElement('button');b.className='btn bs';b.id='btnAnBib';b.style.cssText='background:linear-gradient(135deg,#22c55e,#0ea5e9);color:#fff;font-weight:700';b.textContent='📚 Biblioteca de treino';ref.parentNode.insertBefore(b,ref.nextSibling);b.addEventListener('click',function(){try{bibAbrir('analise');}catch(e){console.error(e);toast('Erro: '+e.message,'error');}});}
+    // Botões no editor de sessões (cada secção)
+    ['aq','at','pr','rx'].forEach(function(sec){
+      var add=document.querySelector('[data-addsec="'+sec+'"]'); if(!add||document.querySelector('[data-bibsec="'+sec+'"]')) return;
+      var b1=document.createElement('button'); b1.className='btn bs'; b1.setAttribute('data-bibsec',sec); b1.style.cssText='font-size:11px;background:#16a34a;color:#fff;font-weight:600'; b1.textContent='📚 Biblioteca'; b1.title='Escolher da biblioteca de treino';
+      var b2=document.createElement('button'); b2.className='btn bs bg'; b2.setAttribute('data-bibsave',sec); b2.style.cssText='font-size:11px'; b2.textContent='💾'; b2.title='Guardar esta secção na biblioteca';
+      add.parentNode.insertBefore(b1,add); add.parentNode.insertBefore(b2,add);
+      b1.addEventListener('click',function(ev){ev.preventDefault();try{bibAbrir('editor',sec);}catch(e){console.error(e);toast('Erro: '+e.message,'error');}});
+      b2.addEventListener('click',function(ev){ev.preventDefault();bibGuardarSecao(sec);});
+    });
+    bon('btnBibClose',function(){closeM('mBib');});
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',wire); else wire();
 })();
