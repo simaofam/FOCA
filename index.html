@@ -235,6 +235,31 @@ tr:last-child td{border-bottom:none;}
   .ma .btn{width:100%;}
 }
 
+/* ═══ AJUSTE AO ECRÃ DO TELEMÓVEL ═══ */
+@media(max-width:900px){
+  .tb{flex-wrap:wrap;gap:8px;}
+  .tl{min-width:0;flex:1 1 auto;}
+  .tt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .tr{flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:6px;min-width:0;}
+  .tr .btn{padding:6px 9px!important;font-size:12px!important;width:auto!important;}
+  .tabs{flex-wrap:wrap;}
+  .main{min-width:0;max-width:100vw;}
+  .pg{max-width:100vw;box-sizing:border-box;}
+  .pg .cd{min-width:0;max-width:100%;box-sizing:border-box;}
+  .pg img,.pg svg,.pg canvas,.pg video{max-width:100%;}
+  .mo .md{max-width:calc(100vw - 16px)!important;box-sizing:border-box;}
+}
+@media(max-width:600px){
+  .tr{width:100%;justify-content:flex-start;}
+  #focaLoginBox{padding:28px 20px;}
+  .pres-item{flex-wrap:wrap;}
+  .pres-nome{flex:1 1 100%;font-weight:600;}
+  .pres-btns{flex-wrap:wrap;width:100%;}
+  .pres-btn{flex:1 1 calc(33% - 6px);padding:8px 4px;}
+}
+/* rede de segurança: nada empurra a página para fora do ecrã */
+html,body{max-width:100%;overflow-x:clip;}
+
 /* WEEK STATS */
 .wk-stats{background:var(--m);border:1px solid var(--b);border-radius:14px;padding:18px 20px;margin-top:18px;}
 .wk-stats-hd{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:14px;color:var(--a);}
