@@ -29565,5 +29565,58 @@ function ndImpLer(file){
 
 </script>
 <!-- ND-FIM -->
+<!-- AB-INICIO -->
+<script>
+// ═══ DASHBOARD: 🎂 Aniversários dos nadadores (hoje + próximos 14 dias, equipa selecionada, sem arquivados) ═══
+var AB_DIAS=14;
+function abProximo(nasc,hoje){
+  var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(nasc||'');if(!m)return null;
+  var mes=+m[2]-1,dia=+m[3],ano=hoje.getFullYear();
+  function dt(a){var d=dia;if(mes===1&&d===29&&!(a%4===0&&(a%100!==0||a%400===0)))d=28;return new Date(a,mes,d);}
+  var d=dt(ano);if(d<hoje)d=dt(++ano);
+  return {data:d,dias:Math.round((d-hoje)/864e5),idade:ano-(+m[1])};
+}
+function abLista(){
+  var h=new Date();h=new Date(h.getFullYear(),h.getMonth(),h.getDate());
+  var base=(typeof filterNad==='function'?filterNad(D.nadadores||[]):(D.nadadores||[])).filter(function(n){return !n.arquivado&&n.nasc;});
+  return base.map(function(n){var p=abProximo(n.nasc,h);return p?{n:n,p:p}:null;}).filter(function(x){return x&&x.p.dias<=AB_DIAS;})
+    .sort(function(a,b){return a.p.dias-b.p.dias||a.n.nome.localeCompare(b.n.nome);});
+}
+function abRender(){
+  var box=gi('dshAniv');
+  if(!box){var ref=gi('dshNextSession');if(!ref)return;box=document.createElement('div');box.id='dshAniv';ref.parentNode.insertBefore(box,ref.nextSibling);}
+  var L=abLista();
+  if(!L.length){box.innerHTML='';box.style.display='none';return;}
+  var DS=['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
+  var hoje=L.filter(function(x){return x.p.dias===0;}),prox=L.filter(function(x){return x.p.dias>0;});
+  var e=function(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});};
+  var h='<div class="ab-card">';
+  if(hoje.length)h+='<div class="ab-hoje">🎉 <b>Hoje '+(hoje.length>1?'fazem':'faz')+' anos:</b> '+hoje.map(function(x){return '<span class="ab-nome">'+e(x.n.nome)+'</span> <span class="ab-id">('+x.p.idade+' anos)</span>';}).join(', ')+'</div>';
+  if(prox.length){
+    h+='<div class="ab-t">🎂 Próximos aniversários <span>· '+AB_DIAS+' dias</span></div><div class="ab-l">';
+    prox.forEach(function(x){var d=x.p.data;
+      h+='<div class="ab-i"><div class="ab-d"><b>'+d.getDate()+'</b><small>'+MS[d.getMonth()].toLowerCase()+'</small></div><div style="min-width:0"><div class="ab-nome">'+e(x.n.nome)+'</div><div class="ab-s">'+(x.p.dias===1?'amanhã':DS[d.getDay()]+' · daqui a '+x.p.dias+' dias')+' · faz '+x.p.idade+'</div></div></div>';});
+    h+='</div>';
+  }
+  box.innerHTML=h+'</div>';box.style.display='';
+}
+(function abInit(){
+  function wire(){
+    if(!gi('abCss')){var st=document.createElement('style');st.id='abCss';st.textContent=
+      '.ab-card{border:1px solid rgba(255,122,182,.35);background:linear-gradient(135deg,rgba(255,122,182,.10),rgba(13,42,84,.35));border-radius:14px;padding:12px 14px;margin:14px 0}'
+      +'.ab-hoje{font-size:14px;padding:8px 10px;border-radius:10px;background:rgba(255,122,182,.16);margin-bottom:8px;line-height:1.5}.ab-hoje .ab-nome{font-weight:700;color:#ff9ccb}.ab-id{color:var(--wd);font-size:12px}'
+      +'.ab-t{font-family:Syne,sans-serif;font-weight:700;font-size:13px;color:#ff9ccb;margin:2px 0 8px}.ab-t span{color:var(--wd);font-weight:400;font-family:inherit;font-size:12px}'
+      +'.ab-l{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}.ab-i{display:flex;gap:10px;align-items:center;background:rgba(10,22,40,.45);border:1px solid var(--b);border-radius:10px;padding:7px 9px}'
+      +'.ab-d{width:40px;text-align:center;line-height:1.05;flex-shrink:0}.ab-d b{display:block;font-size:17px;color:var(--w)}.ab-d small{font-size:10px;color:var(--wd);text-transform:uppercase}'
+      +'.ab-i .ab-nome{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ab-s{font-size:11px;color:var(--wd)}';
+      document.head.appendChild(st);}
+    if(typeof rDash==='function'&&!rDash.__ab){var o=rDash;rDash=function(){var r=o.apply(this,arguments);try{abRender();}catch(e){console.warn(e);}return r;};rDash.__ab=1;}
+    try{abRender();}catch(e){console.warn(e);}
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wire);else wire();
+})();
+
+</script>
+<!-- AB-FIM -->
 </body>
 </html>
