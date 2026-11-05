@@ -28642,5 +28642,592 @@ function bibGuardarSecao(sec){
 })();
 
 </script>
+<!-- CC-INICIO -->
+<style>
+.cc-sec{border:1px solid var(--b);border-radius:14px;padding:14px;margin-bottom:14px;background:rgba(13,42,84,.18)}
+.cc-h{font-family:'Syne',sans-serif;font-weight:700;font-size:15px;color:#ff7ab6;margin-bottom:8px}
+.cc-info{border-left:3px solid var(--a);background:rgba(0,194,255,.07);padding:8px 10px;border-radius:6px;font-size:12.5px;color:var(--wd);margin:6px 0 10px;line-height:1.45}
+.cc-g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.cc-g6{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+.cc-ses{border:1px solid var(--b);border-radius:12px;padding:10px 12px;margin:10px 0;background:rgba(10,22,40,.4)}
+.cc-ses-h{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px;font-size:14px}
+.cc-pv{display:flex;flex-wrap:wrap;gap:6px}
+.cc-chip{display:inline-flex;align-items:center;gap:5px;background:rgba(0,194,255,.1);border:1px solid var(--b);border-radius:8px;padding:4px 8px;font-size:12.5px}
+.cc-chip b{color:var(--a)}.cc-chip small{color:var(--wd)}.cc-chip a{color:var(--r);text-decoration:none;font-weight:700;padding:0 2px}
+.cc-at-F{background:rgba(255,122,182,.12)}.cc-at-M{background:rgba(0,194,255,.12)}
+.cc-sx{border:1px solid var(--b);background:var(--wf);color:var(--w);border-radius:5px;font-size:11px;font-weight:700;padding:1px 6px;cursor:pointer}
+.cc-add summary{cursor:pointer;font-size:12px;color:var(--wd);margin-top:8px}
+.cc-esc{display:flex;flex-wrap:wrap;gap:6px}
+.cc-pill{border:1px solid var(--b);background:var(--wf);color:var(--w);border-radius:20px;padding:7px 13px;font-size:13px;cursor:pointer}
+.cc-pill.on{background:var(--a);color:var(--d);border-color:var(--a);font-weight:600}.cc-pill small{opacity:.65}
+.cc-gw{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--b);border-radius:10px}
+.cc-gr{border-collapse:separate;border-spacing:0;font-size:12px;min-width:100%}
+.cc-gr th,.cc-gr td{padding:4px 6px;text-align:center;border-bottom:1px solid rgba(255,255,255,.06);white-space:nowrap}
+.cc-gr thead th{color:var(--wd);font-weight:600;background:var(--m)}
+.cc-gr .cc-st{position:sticky;left:0;background:var(--m);text-align:left;z-index:1;min-width:150px;max-width:210px;white-space:normal}
+.cc-gr .cc-sh{border-left:2px solid var(--a)}
+.cc-gr .cc-gp{font-weight:700;color:var(--w);background:rgba(13,42,84,.9)}
+.cc-cel{width:38px;height:34px;border-radius:7px;border:1px solid var(--b);background:rgba(10,22,40,.6);color:var(--w);font-weight:700;font-size:14px;cursor:pointer}
+.cc-cel.on{background:var(--a);color:var(--d);border-color:var(--a)}
+.cc-cel.off{opacity:.18;cursor:not-allowed}
+.cc-via{display:grid;grid-template-columns:120px 150px 110px minmax(0,1fr) auto;gap:6px;margin-bottom:6px}
+.cc-prev{max-height:none}
+.cc-card{display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:1px solid var(--b);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:var(--m)}
+@media(max-width:900px){.cc-g4{grid-template-columns:repeat(2,minmax(0,1fr))}.cc-g6{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){.cc-g4,.cc-g6{grid-template-columns:repeat(2,minmax(0,1fr))}.cc-g4 .fg[style*="span 2"]{grid-column:1/-1!important}.cc-via{grid-template-columns:1fr 1fr}.cc-via .fi[data-ccv="local"]{grid-column:1/-1}.cc-gr .cc-st{min-width:110px}.cc-cel{width:34px;height:32px}}
+@media(max-width:600px){#mCC .ma{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px!important}#mCC .ma .btn{width:100%!important;padding:9px 4px!important;font-size:12px!important;justify-content:center}}
+
+</style>
+<div class="mo" id="mCC"><div class="md mw" style="width:1200px;position:relative">
+  <div class="mt" id="ccT">🏆 Convocatória de competição</div>
+  <div id="ccBody"></div>
+  <div class="ma" style="position:sticky;bottom:-28px;background:var(--m);padding:10px 0 4px;flex-wrap:wrap;gap:6px">
+    <button class="btn bg" id="ccFechar">Fechar</button>
+    <button class="btn bp" id="ccGuardar">💾 Guardar</button>
+    <button class="btn bp" id="ccPDF">🖨️ PDF</button>
+    <button class="btn" id="ccWord" style="background:#2563eb;color:#fff">📝 Word</button>
+    <button class="btn" id="ccXLS" style="background:#16a34a;color:#fff">📊 Excel</button>
+    <button class="btn" id="ccWA" style="background:#25d366;color:#06301a">💬 WhatsApp</button>
+  </div>
+</div></div>
+<script>
+// ═══ CONVOCATÓRIAS DE COMPETIÇÃO (Horários → Convocatórias) ═════════════════
+// D.convocatoriasComp = [{id, nome, titulo, data, local, piscina, tecnicos, compId,
+//   sessoes:[{id, jornada, num, data, abertura, inicio, aquec, encontro, aquecReg, provas:[{id,num,dist,estilo,gen,est}]}],
+//   atletas:[{id, sexo}], marcas:{'atletaId|colKey':'X'|'1'..}, transp:[], transpOutro, transpDet,
+//   viagens:[{tipo,data,hora,local}], notas, soComAtletas, criada, alterada}]
+// Regras: aquecimento = início − 1h15 ; encontro na piscina = aquecimento − 15 min (editáveis).
+var CC_AQ_MIN=75, CC_ENC_MIN=15;
+var CC_TRANSP=['Carrinha','Carro Enc. Educação','Autocarro','Outro'];
+var CC_ESTILOS=['Livres','Costas','Bruços','Mariposa','Estilos'];
+var CC_ABR={Livres:'L',Costas:'C','Bruços':'B',Mariposa:'M',Estilos:'E'};
+var CC_DISTS=[50,100,200,400,800,1500];
+var CC=null, CC_SUJO=false;
+var CC_PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+
+function ccE(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function ccNorm(s){return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();}
+function ccLista(){if(!D.convocatoriasComp)D.convocatoriasComp=[];return D.convocatoriasComp;}
+
+// ── horas ──
+function ccMin(t){var m=/^(\d{1,2}):(\d{2})$/.exec(t||'');return m?(+m[1])*60+(+m[2]):null;}
+function ccHHMM(min){if(min==null||isNaN(min))return '';min=((min%1440)+1440)%1440;return String(Math.floor(min/60)).padStart(2,'0')+':'+String(min%60).padStart(2,'0');}
+function ccAquecAuto(s){var i=ccMin(s.inicio);return i==null?'':ccHHMM(i-CC_AQ_MIN);}
+function ccEncAuto(s){var a=ccMin(s.aquec||ccAquecAuto(s));return a==null?'':ccHHMM(a-CC_ENC_MIN);}
+function ccAquec(s){return s.aquecManual?s.aquec:ccAquecAuto(s);}
+function ccEnc(s){return s.encManual?s.encontro:ccEncAuto(Object.assign({},s,{aquec:ccAquec(s)}));}
+function ccHLbl(t){return t?t.replace(':','h'):'—';}
+var CC_DIAS=['dom','seg','ter','qua','qui','sex','sáb'];
+function ccDataLbl(iso,longo){if(!iso)return '';var p=iso.split('-');var d=new Date(+p[0],+p[1]-1,+p[2]);var dias=longo?['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado']:CC_DIAS;return dias[d.getDay()]+' '+(+p[2])+' '+MS[+p[1]-1].toLowerCase();}
+
+// ── provas ──
+function ccEstiloDe(w){w=ccNorm(w);
+  if(/^(livre|livres|crol)/.test(w))return 'Livres';if(/^costas/.test(w))return 'Costas';
+  if(/^(brucos|mama)/.test(w))return 'Bruços';if(/^(mariposa|borboleta)/.test(w))return 'Mariposa';
+  if(/^(estilos|medley)/.test(w))return 'Estilos';return '';}
+function ccProvaLbl(p,curto){var e=curto?(CC_ABR[p.estilo]||p.estilo):p.estilo;return (p.est?'4×':'')+p.dist+(curto?' ':'m ')+e;}
+function ccGenLbl(g){return g==='F'?'Fem.':g==='M'?'Masc.':g==='X'?'Misto':'';}
+// Colunas da grelha de uma sessão: junta Fem./Masc. da mesma prova
+function ccColunas(s){
+  var cols=[],map={};
+  (s.provas||[]).forEach(function(p){
+    var k=s.id+'~'+(p.est?'E':'I')+p.dist+p.estilo;
+    if(!map[k]){map[k]={key:k,dist:p.dist,estilo:p.estilo,est:!!p.est,gens:[],nums:[]};cols.push(map[k]);}
+    if(p.gen&&map[k].gens.indexOf(p.gen)<0)map[k].gens.push(p.gen);
+    if(p.num)map[k].nums.push(p.num);
+  });
+  return cols;
+}
+function ccColServe(col,sexo){if(!col.gens.length||col.gens.indexOf('X')>=0||!sexo)return true;return col.gens.indexOf(sexo)>=0;}
+
+// ═══ LEITURA DO REGULAMENTO ═══
+var CC_MES={jan:1,fev:2,mar:3,abr:4,mai:5,jun:6,jul:7,ago:8,set:9,out:10,nov:11,dez:12};
+var CC_ANO_DOC=null;
+function ccAnoDe(mes,anoTxt){
+  if(anoTxt)return +anoTxt<100?2000+(+anoTxt):+anoTxt;
+  if(CC_ANO_DOC)return mes<CC_ANO_DOC.mes-5?CC_ANO_DOC.ano+1:(mes>CC_ANO_DOC.mes+6?CC_ANO_DOC.ano-1:CC_ANO_DOC.ano);
+  var m=/(\d{4})\s*\/\s*(\d{4})/.exec(cs||'');var a1=m?+m[1]:new Date().getFullYear();
+  return mes>=8?a1:a1+1;
+}
+function ccDatasEm(t){
+  var out=[],n=ccNorm(t),re=/(\d{1,2})\s*(?:de\s+)?(janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\.?(?:\s*(?:de\s+)?(\d{4}))?/g,m;
+  while((m=re.exec(n))){var mes=CC_MES[m[2].slice(0,3)],d=+m[1];if(d<1||d>31)continue;
+    out.push({i:m.index,iso:ccAnoDe(mes,m[3])+'-'+String(mes).padStart(2,'0')+'-'+String(d).padStart(2,'0')});}
+  var re2=/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/g;
+  while((m=re2.exec(n))){var d2=+m[1],m2=+m[2];if(d2<1||d2>31||m2<1||m2>12)continue;
+    out.push({i:m.index,iso:ccAnoDe(m2,m[3])+'-'+String(m2).padStart(2,'0')+'-'+String(d2).padStart(2,'0')});}
+  return out.sort(function(a,b){return a.i-b.i;});
+}
+function ccHorasEm(t){
+  var out=[],n=ccNorm(t),re=/\b(\d{1,2})\s*(?:h\s*(\d{2})?|:(\d{2})|\.(\d{2})\s*h)(?![\dx×])/g,m;
+  while((m=re.exec(n))){var h=+m[1],mi=+(m[2]||m[3]||m[4]||0);if(h>23||mi>59)continue;
+    var antes=n.slice(Math.max(0,m.index-40),m.index),tipo='';
+    var kw=[['abertura',/abertura|portas/g],['aquec',/aquec/g],['inicio',/inicio|comeco|partida|provas/g]],best=-1;
+    kw.forEach(function(k){var r=k[1],x,last=-1;while((x=r.exec(antes)))last=x.index;if(last>best){best=last;tipo=k[0];}});
+    out.push({i:m.index,hhmm:String(h).padStart(2,'0')+':'+String(mi).padStart(2,'0'),tipo:tipo});}
+  return out;
+}
+var CC_RE_PROVA=/(4\s*[x×]\s*)?(?<![\d,.])(50|100|200|400|800|1500)\s*(?:m\b|metros)?\s*(?:de\s+)?(?:estilo\s+)?(livres?|crol|costas|bru[çc]os|mama|mariposa|borboleta|estilos|medley)/gi;
+function ccProvasEm(t){
+  var out=[],re=new RegExp(CC_RE_PROVA.source,'gi'),m,ms=[];
+  while((m=re.exec(t)))ms.push({i:m.index,f:m.index+m[0].length,est:!!m[1]||/estafeta/i.test(t.slice(Math.max(0,m.index-14),m.index)),dist:+m[2],estilo:ccEstiloDe(m[3])});
+  ms.forEach(function(p,k){
+    var cauda=ccNorm(t.slice(p.f,k+1<ms.length?ms[k+1].i:t.length)).slice(0,40);
+    var cab=ccNorm(t.slice(k?ms[k-1].f:0,p.i));
+    var gens=[];
+    if(/femin|\bfem\b|senhoras|\bf\b/.test(cauda))gens.push('F');
+    if(/mascul|\bmasc\b|homens|\bm\b/.test(cauda))gens.push('M');
+    if(/mist/.test(cauda)||/mist/.test(cab.slice(-12)))gens=['X'];
+    var nm=/(?:^|\s)(\d{1,2})\s*[.)\-–ºª:]?\s*(?:estafeta\s*)?$/.exec(cab.slice(-14));
+    var num=nm?+nm[1]:null;
+    if(!gens.length)gens=[''];
+    gens.forEach(function(g,gi){out.push({num:num?(gens.length>1?num+gi:num):null,dist:p.dist,estilo:p.estilo,est:p.est&&p.dist<=200,gen:g});});
+  });
+  return out.filter(function(p){return p.estilo;});
+}
+var CC_RE_SESS=/(\d+)\s*[ªºa.°]{0,3}\s*sess(?:ao|oes)\b|sess(?:ao)\s*(?:n\.?\s*[ºo]?\s*)?(\d+)/;
+var CC_RE_JORN=/(\d+)\s*[ªºa.°]{0,3}\s*jornada|jornada\s*(?:n\.?\s*[ºo]?\s*)?(\d+)/;
+// linhas: array de strings já em ordem de leitura
+function ccInterpretar(linhas){
+  CC_ANO_DOC=null;
+  linhas.some(function(L){var m=/(\d{1,2})\s*(?:de\s+)?(janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\s*(?:de\s+)?(20\d\d)/.exec(ccNorm(L));if(m){CC_ANO_DOC={ano:+m[3],mes:CC_MES[m[2].slice(0,3)]};return true;}});
+  var sess=[],cur=null,jorn=1,dataAtual='',viuSessao=false,soltas=[];
+  function nova(num){cur={id:gid(),jornada:jorn,num:num,data:dataAtual,abertura:'',inicio:'',aquecReg:'',provas:[]};sess.push(cur);viuSessao=true;}
+  linhas.forEach(function(L){
+    var n=ccNorm(L);if(!n.trim())return;
+    var jm=CC_RE_JORN.exec(n);if(jm&&n.split(/\s+/).length<=12){jorn=+(jm[1]||jm[2]);}
+    var datas=ccDatasEm(L),horas=ccHorasEm(L);
+    var sm=CC_RE_SESS.exec(n),curta=n.split(/\s+/).length<=14;
+    if(sm&&(curta||datas.length||horas.length)){
+      var num=+(sm[1]||sm[2]);
+      if(!(cur&&cur.num===num&&!cur.provas.length))nova(num);
+      if(jm)cur.jornada=+(jm[1]||jm[2]);
+    }
+    if(datas.length){dataAtual=datas[0].iso;if(cur&&!cur.provas.length)cur.data=datas[0].iso;}
+    if(cur&&horas.length){
+      horas.forEach(function(h,hi){
+        if(h.tipo==='abertura'){if(!cur.abertura)cur.abertura=h.hhmm;}
+        else if(h.tipo==='aquec'){if(!cur.aquecReg)cur.aquecReg=h.hhmm;}
+        else if(h.tipo==='inicio'){if(!cur.inicio)cur.inicio=h.hhmm;}
+        else if(!cur.inicio&&!cur.provas.length&&(hi===0||!horas[hi-1].tipo))cur.inicio=h.hhmm;
+      });
+    }
+    var pv=ccProvasEm(L);
+    if(pv.length){if(!viuSessao){soltas=soltas.concat(pv);return;}
+      if(!cur)nova(1);
+      pv.forEach(function(p){
+        var dup=cur.provas.some(function(q){return q.dist===p.dist&&q.estilo===p.estilo&&q.gen===p.gen&&q.est===p.est;});
+        if(!dup)cur.provas.push(Object.assign({id:gid()},p));
+      });
+    }
+  });
+  sess=sess.filter(function(s){return s.provas.length;});
+  if(!sess.length&&soltas.length){cur={id:gid(),jornada:1,num:1,data:dataAtual,abertura:'',inicio:'',aquecReg:'',provas:[]};
+    soltas.forEach(function(p){if(!cur.provas.some(function(q){return q.dist===p.dist&&q.estilo===p.estilo&&q.gen===p.gen&&q.est===p.est;}))cur.provas.push(Object.assign({id:gid()},p));});sess=[cur];}
+  // numeração sequencial das sessões e jornada por dia, quando o regulamento não indica jornada
+  var temJorn=linhas.some(function(L){return CC_RE_JORN.test(ccNorm(L));});
+  if(!temJorn){var dias=[];sess.forEach(function(s){if(s.data&&dias.indexOf(s.data)<0)dias.push(s.data);});
+    sess.forEach(function(s){s.jornada=s.data?dias.indexOf(s.data)+1:1;});}
+  return sess;
+}
+// pdf.js: itens com posição → linhas em ordem de leitura, com colunas de sessões lado a lado
+function ccLinhasDeItens(items){
+  var rows=[];
+  items.filter(function(it){return it.str&&it.str.trim();}).forEach(function(it){
+    var y=it.y,r=null;for(var i=0;i<rows.length;i++){if(Math.abs(rows[i].y-y)<=3){r=rows[i];break;}}
+    if(!r){r={y:y,its:[]};rows.push(r);}r.its.push(it);
+  });
+  rows.sort(function(a,b){return b.y-a.y;});
+  rows.forEach(function(r){
+    r.its.sort(function(a,b){return a.x-b.x;});
+    var segs=[],s=null;
+    r.its.forEach(function(it){
+      if(s&&it.x-s.x1<=18){s.t+=(it.x-s.x1>1.5?' ':'')+it.str;s.x1=it.x+it.w;}
+      else{s={x0:it.x,x1:it.x+it.w,t:it.str};segs.push(s);}
+    });
+    r.segs=segs;r.t=segs.map(function(q){return q.t;}).join('  ');
+  });
+  var out=[],cols=null,buckets=null;
+  function despeja(){if(buckets){buckets.forEach(function(b){out.push.apply(out,b);});}cols=null;buckets=null;}
+  rows.forEach(function(r){
+    var heads=r.segs.filter(function(q){return CC_RE_SESS.test(ccNorm(q.t));});
+    if(heads.length>=2){despeja();cols=heads.map(function(h){return h.x0;});buckets=cols.map(function(){return [];});}
+    else if(heads.length===1&&cols){despeja();}
+    if(cols){
+      var antes=[];
+      r.segs.forEach(function(q){var ci=-1;for(var c=0;c<cols.length;c++){if(q.x0>=cols[c]-25)ci=c;}
+        if(ci<0)antes.push(q.t);else buckets[ci].push(q.t);});
+      if(antes.length){/* texto à esquerda das colunas (ex.: nº da prova): repete-se em cada coluna */
+        buckets.forEach(function(b){if(b.length)b[b.length-1]=antes.join(' ')+' '+b[b.length-1];});}
+    } else out.push(r.t);
+  });
+  despeja();
+  return out;
+}
+function ccCarregarPdfJs(cb){
+  if(window.pdfjsLib){cb();return;}
+  var s=document.createElement('script');s.src=CC_PDFJS+'pdf.min.js';
+  s.onload=function(){try{pdfjsLib.GlobalWorkerOptions.workerSrc=CC_PDFJS+'pdf.worker.min.js';}catch(e){}cb();};
+  s.onerror=function(){toast('Não consegui carregar o leitor de PDF (sem internet?). Cola o texto do programa.','error');};
+  document.head.appendChild(s);
+}
+function ccLerPdf(file){
+  var st=gi('ccRegEstado');if(st)st.textContent='A ler «'+file.name+'»…';
+  ccCarregarPdfJs(function(){
+    var fr=new FileReader();
+    fr.onload=function(){
+      pdfjsLib.getDocument({data:new Uint8Array(fr.result)}).promise.then(function(pdf){
+        var pags=[];for(var i=1;i<=pdf.numPages;i++)pags.push(i);
+        return Promise.all(pags.map(function(n){return pdf.getPage(n).then(function(pg){return pg.getTextContent().then(function(tc){
+          return ccLinhasDeItens(tc.items.map(function(it){return {str:it.str,x:it.transform[4],y:it.transform[5],w:it.width||0};}));});});}));
+      }).then(function(porPag){
+        var linhas=[];porPag.forEach(function(l){linhas=linhas.concat(l);});
+        ccAplicarLeitura(linhas,file.name);
+      }).catch(function(e){console.error(e);toast('Erro a ler o PDF: '+e.message,'error');if(st)st.textContent='Não consegui ler este PDF. Cola o texto do programa.';});
+    };
+    fr.readAsArrayBuffer(file);
+  });
+}
+function ccAplicarLeitura(linhas,fonte){
+  var sess=ccInterpretar(linhas);
+  var nP=sess.reduce(function(a,s){return a+s.provas.length;},0);
+  if(!sess.length){toast('Não encontrei provas no programa. Confirma o ficheiro ou cola o texto.','error');
+    CC.regInfo='«'+fonte+'»: não encontrei o programa de provas. Podes colar o texto ou juntar as sessões à mão.';ccRender();return;}
+  if(CC.sessoes.length&&!confirm('Substituir as '+CC.sessoes.length+' sessões atuais pelas lidas do regulamento?')){return;}
+  // dados gerais, se ainda vazios
+  if(!CC.nome){linhas.slice(0,30).some(function(L){var m=/\b(campeonato|torneio|meeting|festival|ta[çc]a|encontro|circuito|gala)\b.{4,}/i.exec(L);if(m){CC.nome=m[0].split(/\s[–—-]\s|[;:]/)[0].replace(/\s+/g,' ').trim().slice(0,90);return true;}});}
+  if(!CC.piscina){var tt=ccNorm(linhas.join(' '));if(/piscina de 50|50\s*m(etros)?\s*\(?(8|10) pistas|tanque de 50|\b50 m\b.*piscina|piscina.*\b50 m\b/.test(tt))CC.piscina='50m';else if(/piscina de 25|tanque de 25|piscina.*\b25 m\b/.test(tt))CC.piscina='25m';}
+  var semInicio=sess.filter(function(s){return !s.inicio;}).length;
+  CC.sessoes=sess;CC.marcas={};CC_SUJO=true;
+  CC.regInfo='«'+fonte+'»: '+sess.length+' sessões e '+nP+' provas lidas.'+(semInicio?' ⚠️ '+semInicio+' sessão(ões) sem hora de início: preenche-a para calcular o aquecimento e o encontro.':' Confirma os dias e as horas.');
+  ccRender();toast(sess.length+' sessões · '+nP+' provas','success');
+}
+
+// ═══ EDITOR ═══
+function ccNova(){return {id:gid(),nome:'',titulo:'',data:'',local:'',piscina:'',tecnicos:'',compId:'',sessoes:[],atletas:[],marcas:{},transp:[],transpOutro:'',transpDet:'',viagens:[],notas:'',soComAtletas:false,escSel:[]};}
+function ccAbrir(id){
+  var x=id?ccLista().find(function(c){return c.id===id;}):null;
+  CC=x?JSON.parse(JSON.stringify(x)):ccNova();CC_SUJO=false;
+  gi('ccT').textContent=x?'🏆 Convocatória — '+(x.nome||'competição'):'🏆 Nova convocatória de competição';
+  ccRender();openM('mCC');gi('mCC').querySelector('.md').scrollTop=0;
+}
+function ccFechar(){if(CC_SUJO&&!confirm('Há alterações por guardar. Fechar mesmo assim?'))return;closeM('mCC');CC=null;ccRenderLista();}
+function ccGuardar(){
+  if(!CC)return;if(!CC.nome){toast('Indica o nome da prova (secção 2)','error');return;}
+  CC.alterada=new Date().toISOString();if(!CC.criada)CC.criada=CC.alterada;
+  var L=ccLista(),i=L.findIndex(function(c){return c.id===CC.id;});
+  var copia=JSON.parse(JSON.stringify(CC));delete copia.regInfo;
+  if(i>=0)L[i]=copia;else L.push(copia);
+  save();CC_SUJO=false;gi('ccT').textContent='🏆 Convocatória — '+CC.nome;toast('Convocatória guardada','success');ccRenderLista();
+}
+function ccApagar(id){var L=ccLista(),c=L.find(function(x){return x.id===id;});if(!c)return;
+  if(!confirm('Apagar a convocatória «'+(c.nome||'')+'»?'))return;
+  D.convocatoriasComp=L.filter(function(x){return x.id!==id;});save();ccRenderLista();toast('Convocatória apagada','success');}
+function ccDuplicar(id){var c=ccLista().find(function(x){return x.id===id;});if(!c)return;
+  var n=JSON.parse(JSON.stringify(c));n.id=gid();n.nome=(c.nome||'')+' (cópia)';n.criada=n.alterada=new Date().toISOString();
+  n.sessoes.forEach(function(s){var ns=gid();Object.keys(n.marcas||{}).forEach(function(k){if(k.indexOf('|'+s.id+'~')>0){n.marcas[k.replace('|'+s.id+'~','|'+ns+'~')]=n.marcas[k];delete n.marcas[k];}});s.id=ns;});
+  ccLista().push(n);save();ccRenderLista();toast('Convocatória duplicada','success');}
+
+function ccNadAtivos(){return (D.nadadores||[]).filter(function(n){return !n.arquivado;});}
+function ccNad(id){return (D.nadadores||[]).find(function(n){return n.id===id;});}
+function ccSexoPalpite(n){if(n&&n.sexo)return n.sexo;var p=ccNorm((n&&n.nome||'').split(' ')[0]);return /a$/.test(p)&&!/^(luca|joshua|nikita|andrea)$/.test(p)?'F':'M';}
+function ccEscaloes(){var s=[];ccNadAtivos().forEach(function(n){if(n.escalao&&s.indexOf(n.escalao)<0)s.push(n.escalao);});
+  var ordem=['Grupo Formação','Cadetes','Infantis','Juvenis','Juniores','Absolutos','Masters'];
+  return s.sort(function(a,b){var ia=ordem.indexOf(a),ib=ordem.indexOf(b);return (ia<0?99:ia)-(ib<0?99:ib)||a.localeCompare(b);});}
+function ccJuntarAtleta(id){if(!id||CC.atletas.some(function(a){return a.id===id;}))return false;CC.atletas.push({id:id,sexo:ccSexoPalpite(ccNad(id))});return true;}
+function ccAtletasOrd(){
+  return CC.atletas.filter(function(a){return ccNad(a.id);}).sort(function(a,b){return (a.sexo||'').localeCompare(b.sexo||'')||ccNad(a.id).nome.localeCompare(ccNad(b.id).nome);});
+}
+function ccSessLbl(s,i){var mesmo=CC.sessoes.filter(function(x){return x.jornada===s.jornada;});
+  return (s.jornada||1)+'ª jornada · '+(mesmo.indexOf(s)+1)+'ª sessão';}
+function ccNumInd(aid){var n=0;CC.sessoes.forEach(function(s){ccColunas(s).forEach(function(c){if(!c.est&&CC.marcas[aid+'|'+c.key])n++;});});return n;}
+
+function ccRender(){
+  if(!CC)return;var b=gi('ccBody'),h='';
+  var comps=(D.competicoes||[]).filter(function(c){return !c.isRPImport;}).sort(function(a,b){return (b.data||'').localeCompare(a.data||'');}).slice(0,60);
+  // 1. Regulamento
+  h+='<div class="cc-sec"><div class="cc-h">1. Regulamento</div>'
+   +'<div class="cc-info">Carrega o regulamento (PDF): a FOCA lê o programa e distribui as provas por jornada e sessão. Depois confirma os dias e as horas — o aquecimento fica <b>1h15 antes do início</b> e o encontro na piscina <b>15 min antes do aquecimento</b>.</div>'
+   +'<label class="btn bp" style="cursor:pointer">📄 Carregar regulamento (PDF)<input type="file" accept=".pdf,application/pdf" id="ccRegFile" style="display:none"></label> '
+   +'<details style="margin-top:8px"><summary style="cursor:pointer;font-size:13px;color:var(--wd)">Ou colar o texto do programa</summary>'
+   +'<textarea class="fta" id="ccRegTxt" rows="6" placeholder="Cola aqui o programa (sessões, horas e provas)…"></textarea><button class="btn bg bs" id="ccRegLer" style="margin-top:6px">Ler texto</button></details>'
+   +'<div id="ccRegEstado" class="cc-info" style="'+(CC.regInfo?'':'display:none')+'">'+ccE(CC.regInfo||'')+'</div></div>';
+  // 2. Dados da prova
+  h+='<div class="cc-sec"><div class="cc-h">2. Dados da prova</div>'
+   +'<div class="cc-g4"><div class="fg"><label class="fl">Competição do calendário</label><select class="fse" id="ccComp"><option value="">— nenhuma —</option>'
+   +comps.map(function(c){return '<option value="'+c.id+'"'+(CC.compId===c.id?' selected':'')+'>'+ccE(c.nome)+(c.data?' · '+fd(c.data):'')+'</option>';}).join('')+'</select></div>'
+   +'<div class="fg"><label class="fl">Prova *</label><input class="fi" data-cc="nome" value="'+ccE(CC.nome)+'" placeholder="ex.: Campeonato Nacional de Clubes"></div>'
+   +'<div class="fg"><label class="fl">Escalões (título)</label><input class="fi" data-cc="titulo" value="'+ccE(CC.titulo)+'" placeholder="ex.: Juvenis e Juniores"></div>'
+   +'<div class="fg"><label class="fl">Data</label><input class="fi" data-cc="data" value="'+ccE(CC.data)+'" placeholder="ex.: 19-20 dez 2026"></div></div>'
+   +'<div class="cc-g4"><div class="fg"><label class="fl">Local</label><input class="fi" data-cc="local" value="'+ccE(CC.local)+'"></div>'
+   +'<div class="fg"><label class="fl">Piscina</label><select class="fse" data-cc="piscina">'+['','25m','50m'].map(function(p){return '<option value="'+p+'"'+(CC.piscina===p?' selected':'')+'>'+(p||'—')+'</option>';}).join('')+'</select></div>'
+   +'<div class="fg" style="grid-column:span 2"><label class="fl">Técnicos</label><input class="fi" data-cc="tecnicos" value="'+ccE(CC.tecnicos)+'" placeholder="ex.: Simão Marinho"></div></div>';
+  // sessões
+  CC.sessoes.forEach(function(s,i){
+    var aq=ccAquec(s),en=ccEnc(s);
+    h+='<div class="cc-ses" data-si="'+i+'"><div class="cc-ses-h"><b>'+ccSessLbl(s,i)+'</b>'+(s.data?' <span style="color:var(--wd)">· '+ccDataLbl(s.data,true)+'</span>':'')
+     +'<span style="flex:1"></span><button class="btn bs bg" data-cc-sup="'+i+'" title="Subir">↑</button><button class="btn bs bd" data-cc-tira="'+i+'">Tirar</button></div>'
+     +'<div class="cc-g6">'
+     +'<div class="fg"><label class="fl">Jornada</label><input class="fi" type="number" min="1" max="9" data-ccs="jornada" data-si="'+i+'" value="'+(s.jornada||1)+'"></div>'
+     +'<div class="fg"><label class="fl">Dia</label><input class="fi" type="date" data-ccs="data" data-si="'+i+'" value="'+(s.data||'')+'"></div>'
+     +'<div class="fg"><label class="fl">Início da competição</label><input class="fi" type="time" data-ccs="inicio" data-si="'+i+'" value="'+(s.inicio||'')+'"></div>'
+     +'<div class="fg"><label class="fl">Aquecimento'+(s.aquecManual?' ✏️':' (−1h15)')+'</label><input class="fi" type="time" data-ccs="aquec" data-si="'+i+'" value="'+aq+'"></div>'
+     +'<div class="fg"><label class="fl">Encontro na piscina'+(s.encManual?' ✏️':' (−15 min)')+'</label><input class="fi" type="time" data-ccs="encontro" data-si="'+i+'" value="'+en+'"></div>'
+     +'<div class="fg"><label class="fl">Abertura piscina</label><input class="fi" type="time" data-ccs="abertura" data-si="'+i+'" value="'+(s.abertura||'')+'"></div></div>'
+     +((s.aquecManual||s.encManual)?'<div style="font-size:11px;color:var(--wd);margin:-4px 0 6px">Horas alteradas à mão. <a href="#" data-cc-auto="'+i+'" style="color:var(--a)">Repor cálculo automático</a></div>':'')
+     +(s.aquecReg&&s.aquecReg!==aq?'<div style="font-size:11px;color:#f5c842;margin:-4px 0 6px">ℹ️ O regulamento indica aquecimento às '+ccHLbl(s.aquecReg)+'.</div>':'')
+     +'<div class="cc-pv">'+(s.provas.length?s.provas.map(function(p,pi){return '<span class="cc-chip"><b>'+(p.num||pi+1)+'</b> '+ccE(ccProvaLbl(p))+(p.gen?' <small>'+ccGenLbl(p.gen)+'</small>':'')+' <a href="#" data-cc-pxx="'+i+':'+pi+'" title="Tirar prova">×</a></span>';}).join(''):'<span style="font-size:12px;color:var(--wd)">Sem provas.</span>')+'</div>'
+     +'<details class="cc-add"><summary>Juntar ou corrigir provas desta sessão ('+s.provas.length+')</summary><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px">'
+     +'<select class="fse" id="ccAd'+i+'" style="width:auto">'+CC_DISTS.map(function(d){return '<option>'+d+'</option>';}).join('')+'</select>'
+     +'<select class="fse" id="ccAe'+i+'" style="width:auto">'+CC_ESTILOS.map(function(e){return '<option>'+e+'</option>';}).join('')+'</select>'
+     +'<select class="fse" id="ccAg'+i+'" style="width:auto"><option value="">Fem. e Masc.</option><option value="F">Femininos</option><option value="M">Masculinos</option><option value="X">Misto</option></select>'
+     +'<label style="font-size:12px;display:flex;gap:4px;align-items:center"><input type="checkbox" id="ccAs'+i+'"> Estafeta 4×</label>'
+     +'<button class="btn bp bs" data-cc-padd="'+i+'">+ Juntar prova</button></div></details></div>';
+  });
+  h+='<button class="btn bg" id="ccSesAdd">+ Juntar sessão</button></div>';
+  // 3. Atletas
+  var escs=ccEscaloes(),sel=CC.escSel||[];
+  var nao=ccNadAtivos().filter(function(n){return !CC.atletas.some(function(a){return a.id===n.id;});}).sort(function(a,b){return a.nome.localeCompare(b.nome);});
+  var ats=ccAtletasOrd(),nF=ats.filter(function(a){return a.sexo==='F';}).length;
+  h+='<div class="cc-sec"><div class="cc-h">3. Atletas</div><div style="font-size:12px;color:var(--wd);margin-bottom:6px">Escalões (podes escolher vários) — dados do separador Nadadores</div>'
+   +'<div class="cc-esc">'+escs.map(function(e){var n=ccNadAtivos().filter(function(x){return x.escalao===e;}).length;return '<button class="cc-pill'+(sel.indexOf(e)>=0?' on':'')+'" data-cc-esc="'+ccE(e)+'">'+ccE(e)+' <small>'+n+'</small></button>';}).join('')+'</div>'
+   +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0"><button class="btn bp" id="ccJuntaEsc"'+(sel.length?'':' disabled style="opacity:.5"')+'>Juntar todos dos escalões escolhidos</button>'
+   +'<select class="fse" id="ccJuntaUm" style="width:auto;min-width:200px"><option value="">Juntar um atleta…</option>'+nao.map(function(n){return '<option value="'+n.id+'">'+ccE(n.nome)+' · '+ccE(n.escalao||'')+'</option>';}).join('')+'</select></div>'
+   +'<div class="cc-info">'+ats.length+' atleta(s) ('+(ats.length-nF)+' M, '+nF+' F). Toca em M/F para corrigir o género; toca em × para tirar.</div>'
+   +'<div class="cc-pv">'+ats.map(function(a){var n=ccNad(a.id);return '<span class="cc-chip cc-at-'+a.sexo+'">'+ccE(n.nome)+' <button class="cc-sx" data-cc-sx="'+a.id+'" title="Mudar género">'+a.sexo+'</button> <a href="#" data-cc-atx="'+a.id+'" title="Tirar">×</a></span>';}).join('')+'</div></div>';
+  // 4. Grelha
+  h+='<div class="cc-sec"><div class="cc-h">4. Provas de cada atleta</div><div class="cc-info">Toca nas quadrículas. Provas individuais: <b>X</b>. Estafetas: cada toque muda o número da equipa (1 a 4). <b>Ind.</b> = número de provas individuais. As quadrículas cinzentas são provas do outro género.</div>'
+   +ccGrelhaHTML()+'</div>';
+  // 5. Transporte
+  h+='<div class="cc-sec"><div class="cc-h">5. Saída, transporte e notas</div>'
+   +'<div class="fl" style="margin-bottom:4px">Transporte (podes escolher vários)</div><div class="cc-esc">'
+   +CC_TRANSP.map(function(t){return '<button class="cc-pill'+(CC.transp.indexOf(t)>=0?' on':'')+'" data-cc-tr="'+ccE(t)+'">'+({'Carrinha':'🚐','Carro Enc. Educação':'🚗','Autocarro':'🚌','Outro':'➕'}[t])+' '+ccE(t)+'</button>';}).join('')+'</div>'
+   +(CC.transp.indexOf('Outro')>=0?'<div class="fg" style="margin-top:6px"><label class="fl">Outro transporte</label><input class="fi" data-cc="transpOutro" value="'+ccE(CC.transpOutro)+'" placeholder="ex.: comboio"></div>':'')
+   +'<div class="fg" style="margin-top:6px"><label class="fl">Pormenores do transporte</label><input class="fi" data-cc="transpDet" value="'+ccE(CC.transpDet)+'" placeholder="ex.: carrinha do clube (9 lugares) + 2 carros de pais"></div>'
+   +'<div class="fl" style="margin:8px 0 4px">Saída / regresso</div>'
+   +CC.viagens.map(function(v,vi){return '<div class="cc-via"><select class="fse" data-ccv="tipo" data-vi="'+vi+'">'+['Saída','Regresso'].map(function(t){return '<option'+(v.tipo===t?' selected':'')+'>'+t+'</option>';}).join('')+'</select>'
+     +'<input class="fi" type="date" data-ccv="data" data-vi="'+vi+'" value="'+(v.data||'')+'"><input class="fi" type="time" data-ccv="hora" data-vi="'+vi+'" value="'+(v.hora||'')+'">'
+     +'<input class="fi" data-ccv="local" data-vi="'+vi+'" value="'+ccE(v.local||'')+'" placeholder="Local (ex.: Piscina de Felgueiras)"><button class="btn bs bd" data-cc-vx="'+vi+'">×</button></div>';}).join('')
+   +'<button class="btn bg bs" id="ccViaAdd">+ Juntar saída ou regresso</button>'
+   +'<div class="fg" style="margin-top:8px"><label class="fl">Notas / observações (uma por linha)</label><textarea class="fta" rows="3" data-cc="notas" placeholder="ex.: Levar fato de treino do clube, touca e óculos de reserva.">'+ccE(CC.notas)+'</textarea></div></div>';
+  // 6. Pré-visualização
+  h+='<div class="cc-sec"><div class="cc-h">6. Convocatória</div><div class="cc-info">É assim que fica no PDF, no Word e no Excel (uma folha para os femininos e outra para os masculinos).</div>'
+   +'<label style="font-size:13px;display:flex;gap:6px;align-items:center;margin-bottom:8px"><input type="checkbox" id="ccSoCom"'+(CC.soComAtletas?' checked':'')+'> Mostrar só as provas com atletas</label>'
+   +'<div id="ccPrev" class="cc-prev">'+ccDocHTML()+'</div></div>';
+  var top=gi('mCC').querySelector('.md').scrollTop;
+  b.innerHTML=h;gi('mCC').querySelector('.md').scrollTop=top;
+}
+function ccGrelhaHTML(){
+  var ats=ccAtletasOrd();
+  if(!CC.sessoes.length)return '<div style="font-size:12px;color:var(--wd)">Primeiro carrega o regulamento ou junta uma sessão.</div>';
+  if(!ats.length)return '<div style="font-size:12px;color:var(--wd)">Junta atletas na secção 3.</div>';
+  var h='<div class="cc-gw"><table class="cc-gr"><thead><tr><th class="cc-st" rowspan="2">Atleta</th>';
+  CC.sessoes.forEach(function(s,i){var c=ccColunas(s);h+='<th colspan="'+Math.max(1,c.length)+'" class="cc-sh">'+(i+1)+'ª sessão'+(s.data?' · '+ccDataLbl(s.data):'')+'</th>';});
+  h+='</tr><tr>';
+  CC.sessoes.forEach(function(s){var c=ccColunas(s);if(!c.length)h+='<th class="cc-sh">—</th>';c.forEach(function(col,ci){h+='<th class="'+(ci===0?'cc-sh':'')+'">'+(col.est?'4×':'')+'<small>'+(CC_ABR[col.estilo]||'')+'</small><br>'+col.dist+'</th>';});});
+  h+='</tr></thead><tbody>';
+  var grupo='';
+  ats.forEach(function(a){
+    if(a.sexo!==grupo){grupo=a.sexo;h+='<tr><td class="cc-st cc-gp" colspan="999">'+(grupo==='F'?'Femininos':'Masculinos')+'</td></tr>';}
+    var n=ccNad(a.id);h+='<tr><td class="cc-st">'+ccE(n.nome)+' <small style="color:var(--wd)">'+ccNumInd(a.id)+' ind.</small></td>';
+    CC.sessoes.forEach(function(s){var c=ccColunas(s);if(!c.length)h+='<td class="cc-sh"></td>';
+      c.forEach(function(col,ci){var ok=ccColServe(col,a.sexo),v=CC.marcas[a.id+'|'+col.key]||'';
+        h+='<td class="'+(ci===0?'cc-sh':'')+'"><button class="cc-cel'+(v?' on':'')+(ok?'':' off')+'" data-cc-cel="'+a.id+'|'+col.key+'"'+(ok?'':' disabled')+'>'+ccE(v)+'</button></td>';});});
+    h+='</tr>';
+  });
+  return h+'</tbody></table></div>';
+}
+
+// ── documento final (pré-visualização / PDF / Word) ──
+function ccColsVisiveis(s,sexo){
+  return ccColunas(s).filter(function(col){
+    if(!ccColServe(col,sexo))return false;
+    if(!CC.soComAtletas)return true;
+    return CC.atletas.some(function(a){return a.sexo===sexo&&CC.marcas[a.id+'|'+col.key];});
+  });
+}
+function ccTransporteTxt(c){c=c||CC;return c.transp.map(function(t){return t==='Outro'?(c.transpOutro||'Outro'):t;}).join(' + ');}
+function ccDocHTML(){
+  var c=CC,folhas=[];
+  ['F','M'].forEach(function(sx){
+    var ats=ccAtletasOrd().filter(function(a){return a.sexo===sx;});if(!ats.length)return;
+    var sess=c.sessoes.map(function(s){return {s:s,cols:ccColsVisiveis(s,sx)};}).filter(function(o){return o.cols.length;});
+    var h='<div class="ccd"><div class="ccd-t"><span>Convocatória'+(c.titulo?' – '+ccE(c.titulo):'')+'</span><span class="ccd-g">'+(sx==='F'?'FEMININOS':'MASCULINOS')+'</span></div>'
+      +'<div class="ccd-i"><span><b>Prova:</b> '+ccE(c.nome||'—')+'</span>'+(c.data?'<span><b>Data:</b> '+ccE(c.data)+'</span>':'')+(c.local?'<span><b>Local:</b> '+ccE(c.local)+'</span>':'')+(c.piscina?'<span><b>Piscina:</b> '+c.piscina+'</span>':'')+'</div>'
+      +'<div class="ccd-w"><table class="ccd-tb"><thead><tr><th rowspan="3" class="ccd-n">Nome</th>';
+    sess.forEach(function(o){var s=o.s,i=c.sessoes.indexOf(s);h+='<th colspan="'+o.cols.length+'" class="ccd-s">'+ccE(ccSessLbl(s,i))+(s.data?'<br><small>'+ccDataLbl(s.data,true)+'</small>':'')+'</th>';});
+    h+='</tr><tr>';
+    sess.forEach(function(o){var s=o.s;h+='<th colspan="'+o.cols.length+'" class="ccd-h"><small>Encontro <b>'+ccHLbl(ccEnc(s))+'</b> · Aquec. <b>'+ccHLbl(ccAquec(s))+'</b> · Início <b>'+ccHLbl(s.inicio)+'</b></small></th>';});
+    h+='</tr><tr>';
+    sess.forEach(function(o){o.cols.forEach(function(col){h+='<th class="ccd-p">'+(col.est?'4×':'')+(CC_ABR[col.estilo]||'')+'<br>'+col.dist+'</th>';});});
+    h+='</tr></thead><tbody>';
+    ats.forEach(function(a){var n=ccNad(a.id);h+='<tr><td class="ccd-n">'+ccE(n.nome)+'</td>';
+      sess.forEach(function(o){o.cols.forEach(function(col){h+='<td>'+ccE(c.marcas[a.id+'|'+col.key]||'')+'</td>';});});h+='</tr>';});
+    if(!sess.length)h+='<tr><td class="ccd-n">—</td></tr>';
+    h+='</tbody></table></div><div class="ccd-l">X = prova individual · número = equipa de estafeta · L Livres · C Costas · B Bruços · M Mariposa · E Estilos</div>';
+    var extra='';
+    if(c.transp.length||c.transpDet)extra+='<div><b>Transporte:</b> '+ccE(ccTransporteTxt(c))+(c.transpDet?' — '+ccE(c.transpDet):'')+'</div>';
+    c.viagens.forEach(function(v){if(v.data||v.hora||v.local)extra+='<div><b>'+ccE(v.tipo)+':</b> '+(v.data?ccDataLbl(v.data,true)+' ':'')+(v.hora?'às '+ccHLbl(v.hora)+' ':'')+(v.local?'— '+ccE(v.local):'')+'</div>';});
+    if(c.tecnicos)extra+='<div><b>Técnicos:</b> '+ccE(c.tecnicos)+'</div>';
+    var notas=(c.notas||'').split('\n').map(function(x){return x.trim();}).filter(Boolean);
+    if(notas.length)extra+='<div><b>Notas:</b><ul>'+notas.map(function(x){return '<li>'+ccE(x)+'</li>';}).join('')+'</ul></div>';
+    if(extra)h+='<div class="ccd-x">'+extra+'</div>';
+    folhas.push(h+'</div>');
+  });
+  if(!folhas.length)return '<div style="padding:14px;color:#555;font-size:13px">Junta atletas e marca as provas para ver a convocatória.</div>';
+  return folhas.join('');
+}
+var CC_DOC_CSS='.ccd{background:#fff;color:#111;border-radius:8px;padding:14px 16px;margin-bottom:14px;font-family:Arial,sans-serif;page-break-after:always}.ccd:last-child{page-break-after:auto}'
+  +'.ccd-t{display:flex;justify-content:space-between;align-items:baseline;font-size:18px;font-weight:700;border-bottom:3px solid #0d2a54;padding-bottom:6px;margin-bottom:8px;gap:10px}.ccd-g{font-size:12px;color:#1a5fb4;letter-spacing:1.5px}'
+  +'.ccd-i{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:12px;margin-bottom:8px}'
+  +'.ccd-tb{width:100%;border-collapse:collapse;font-size:11px}.ccd-tb th,.ccd-tb td{border:1px solid #b8c4d6;padding:4px 5px;text-align:center}'
+  +'.ccd-tb th.ccd-s{background:#0d2a54;color:#fff}.ccd-tb th.ccd-h{background:#e8eef7;color:#0d2a54;font-weight:400}.ccd-tb th.ccd-p{background:#f4f7fb;color:#0d2a54}.ccd-tb th.ccd-n{background:#0d2a54;color:#fff;text-align:left}'
+  +'.ccd-tb td.ccd-n{text-align:left;font-weight:600;white-space:nowrap}.ccd-tb td{font-weight:700;color:#0d2a54}'
+  +'.ccd-tb th{text-transform:none!important;letter-spacing:normal!important;font-size:11px}.ccd-w{overflow-x:auto;-webkit-overflow-scrolling:touch}'
+  +'.ccd-l{font-size:10px;color:#666;margin-top:5px}.ccd-x{font-size:12px;margin-top:10px;line-height:1.5}.ccd-x ul{margin:2px 0 0 18px;padding:0}';
+
+function ccExportPDF(){
+  if(!CC){toast('Sem convocatória aberta','error');return;}
+  var logo=(gi('clubLogoImg')||{}).src||'';
+  var html='<div class="hdr"><img src="'+logo+'"><div><div class="hdr-t">FOCA — Clube de Natação de Felgueiras</div><div class="hdr-s">Convocatória · '+ccE(CC.nome||'')+(CC.data?' · '+ccE(CC.data):'')+'</div></div></div>'+ccDocHTML();
+  var css='@page{margin:0;size:landscape;}@media print{body{padding:9mm}}body{font-family:Arial,sans-serif;background:#fff;color:#111;padding:12px}'
+    +'.hdr{display:flex;align-items:center;gap:12px;border-bottom:2px solid #1a5fb4;padding-bottom:8px;margin-bottom:12px}.hdr img{width:46px;height:46px;object-fit:contain}.hdr-t{font-weight:700;font-size:15px;color:#0d2a54}.hdr-s{font-size:11px;color:#555}'
+    +'*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}'+CC_DOC_CSS+'.ccd{border:1px solid #d5dde8;padding:10px}';
+  var w=window.open('','_blank','width=1200,height=900');if(!w){toast('Permite popups','error');return;}
+  w.document.open();w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>FOCA — Convocatória</title><style>'+css+'</style></head><body>'+html+'<scr'+'ipt>window.onload=function(){setTimeout(function(){window.print();},400);};</scr'+'ipt></body></html>');w.document.close();
+}
+function ccNomeFich(){return 'foca_convocatoria_'+ccNorm(CC&&CC.nome||'competicao').replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,40);}
+function ccExportXLS(){
+  if(!CC)return;
+  if(typeof XLSX==='undefined'){var sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';sc.onload=ccExportXLS;document.head.appendChild(sc);toast('A preparar Excel…','info');return;}
+  var wb=XLSX.utils.book_new(),n=0;
+  ['F','M'].forEach(function(sx){
+    var ats=ccAtletasOrd().filter(function(a){return a.sexo===sx;});if(!ats.length)return;
+    var sess=CC.sessoes.map(function(s){return {s:s,cols:ccColsVisiveis(s,sx)};}).filter(function(o){return o.cols.length;});
+    var rows=[['Convocatória'+(CC.titulo?' – '+CC.titulo:'')+' · '+(sx==='F'?'Femininos':'Masculinos')],['Prova: '+(CC.nome||''),'Data: '+(CC.data||''),'Local: '+(CC.local||''),'Piscina: '+(CC.piscina||'')],[]];
+    var r1=['Nome'],r2=[''],r3=[''],merges=[];
+    sess.forEach(function(o){var s=o.s,i=CC.sessoes.indexOf(s),c0=r1.length;
+      o.cols.forEach(function(col,k){r1.push(k?'':ccSessLbl(s,i)+(s.data?' · '+ccDataLbl(s.data,true):''));r2.push(k?'':'Encontro '+ccHLbl(ccEnc(s))+' · Aquec. '+ccHLbl(ccAquec(s))+' · Início '+ccHLbl(s.inicio));r3.push((col.est?'4×':'')+col.dist+' '+(CC_ABR[col.estilo]||''));});
+      if(o.cols.length>1){merges.push({s:{r:3,c:c0},e:{r:3,c:c0+o.cols.length-1}});merges.push({s:{r:4,c:c0},e:{r:4,c:c0+o.cols.length-1}});}});
+    rows.push(r1,r2,r3);
+    ats.forEach(function(a){var r=[ccNad(a.id).nome];sess.forEach(function(o){o.cols.forEach(function(col){r.push(CC.marcas[a.id+'|'+col.key]||'');});});rows.push(r);});
+    rows.push([]);
+    if(CC.transp.length)rows.push(['Transporte: '+ccTransporteTxt()+(CC.transpDet?' — '+CC.transpDet:'')]);
+    CC.viagens.forEach(function(v){rows.push([v.tipo+': '+(v.data?ccDataLbl(v.data,true)+' ':'')+(v.hora?'às '+ccHLbl(v.hora)+' ':'')+(v.local?'— '+v.local:'')]);});
+    if(CC.tecnicos)rows.push(['Técnicos: '+CC.tecnicos]);
+    (CC.notas||'').split('\n').filter(function(x){return x.trim();}).forEach(function(x){rows.push(['• '+x.trim()]);});
+    var ws=XLSX.utils.aoa_to_sheet(rows);ws['!merges']=merges;ws['!cols']=[{wch:28}].concat(r3.slice(1).map(function(){return {wch:9};}));
+    XLSX.utils.book_append_sheet(wb,ws,sx==='F'?'Femininos':'Masculinos');n++;
+  });
+  if(!n){toast('Junta atletas primeiro','error');return;}
+  XLSX.writeFile(wb,ccNomeFich()+'.xlsx');
+}
+function ccTextoWhatsApp(){
+  var c=CC,L=['*Convocatória'+(c.titulo?' – '+c.titulo:'')+'*','🏆 '+(c.nome||'')];
+  if(c.data)L.push('📅 '+c.data);if(c.local)L.push('📍 '+c.local+(c.piscina?' ('+c.piscina+')':''));
+  c.sessoes.forEach(function(s,i){
+    var linhas=[];
+    ccAtletasOrd().forEach(function(a){var pv=[];ccColunas(s).forEach(function(col){var v=c.marcas[a.id+'|'+col.key];if(v)pv.push((col.est?'4×':'')+col.dist+' '+col.estilo+(col.est?' (eq. '+v+')':''));});
+      if(pv.length)linhas.push('• '+ccNad(a.id).nome+': '+pv.join(', '));});
+    if(!linhas.length)return;
+    L.push('','*'+ccSessLbl(s,i)+'*'+(s.data?' — '+ccDataLbl(s.data,true):''),'🕒 Encontro na piscina: '+ccHLbl(ccEnc(s))+' · Aquecimento: '+ccHLbl(ccAquec(s))+' · Início: '+ccHLbl(s.inicio));
+    L.push.apply(L,linhas);
+  });
+  if(c.transp.length||c.transpDet)L.push('','🚐 Transporte: '+ccTransporteTxt(c)+(c.transpDet?' — '+c.transpDet:''));
+  c.viagens.forEach(function(v){if(v.data||v.hora||v.local)L.push((v.tipo==='Saída'?'➡️ ':'⬅️ ')+v.tipo+': '+(v.data?ccDataLbl(v.data,true)+' ':'')+(v.hora?'às '+ccHLbl(v.hora)+' ':'')+(v.local?'— '+v.local:''));});
+  var notas=(c.notas||'').split('\n').filter(function(x){return x.trim();});if(notas.length){L.push('','📝 Notas:');notas.forEach(function(x){L.push('- '+x.trim());});}
+  if(c.tecnicos)L.push('','Técnicos: '+c.tecnicos);
+  return L.join('\n');
+}
+function ccWhatsApp(){var t=ccTextoWhatsApp();
+  try{navigator.clipboard&&navigator.clipboard.writeText(t);}catch(e){}
+  window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank');toast('Texto copiado e WhatsApp aberto','success');}
+
+// ── lista no separador Horários → Convocatórias ──
+function ccRenderLista(){
+  var box=gi('ccLista');if(!box)return;var L=ccLista().slice().sort(function(a,b){return (b.alterada||'').localeCompare(a.alterada||'');});
+  box.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:18px 0 8px"><div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px">🏆 Convocatórias de competição</div>'
+   +'<button class="btn bp" id="btnCCNova">+ Convocatória de competição</button></div>'
+   +(L.length?L.map(function(c){var nA=(c.atletas||[]).length,d1=(c.sessoes||[]).map(function(s){return s.data;}).filter(Boolean).sort()[0];
+     return '<div class="cc-card"><div style="min-width:0;flex:1"><div style="font-weight:600">'+ccE(c.nome||'(sem nome)')+'</div><div style="font-size:12px;color:var(--wd)">'+[c.data||(d1?fd(d1):''),c.local,(c.sessoes||[]).length+' sessões',nA+' atletas'].filter(Boolean).map(ccE).join(' · ')+'</div></div>'
+      +'<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn bp bs" data-cc-abre="'+c.id+'">✏️ Abrir</button><button class="btn bg bs" data-cc-dup="'+c.id+'">⧉ Duplicar</button><button class="btn bd bs" data-cc-del="'+c.id+'">🗑️</button></div></div>';}).join('')
+     :'<div style="padding:16px;text-align:center;color:var(--wd);font-size:13px;border:1px dashed var(--b);border-radius:12px">Ainda sem convocatórias de competição. Carrega o regulamento e a FOCA distribui as provas por sessão.</div>');
+}
+
+// ── eventos ──
+(function ccInit(){
+  function sessDe(el){return CC.sessoes[+el.getAttribute('data-si')];}
+  function wire(){
+    if(!gi('ccDocCss')){var st=document.createElement('style');st.id='ccDocCss';st.textContent=CC_DOC_CSS;document.head.appendChild(st);}
+    var vc=gi('vConv');if(!vc)return;
+    if(!gi('ccLista')){var d=document.createElement('div');d.id='ccLista';vc.appendChild(d);}
+    if(typeof rConvocatorias==='function'&&!rConvocatorias._cc){var o=rConvocatorias;rConvocatorias=function(){var r=o.apply(this,arguments);try{ccRenderLista();}catch(e){console.error(e);}return r;};rConvocatorias._cc=true;}
+    ccRenderLista();
+    vc.addEventListener('click',function(ev){var t=ev.target.closest('button');if(!t)return;
+      if(t.id==='btnCCNova'){ccAbrir(null);return;}
+      var a=t.getAttribute('data-cc-abre');if(a){ccAbrir(a);return;}
+      a=t.getAttribute('data-cc-dup');if(a){ccDuplicar(a);return;}
+      a=t.getAttribute('data-cc-del');if(a){ccApagar(a);return;}
+    });
+    var m=gi('mCC');
+    bon('ccFechar',ccFechar);bon('ccGuardar',ccGuardar);
+    bon('ccPDF',function(){try{ccExportPDF();}catch(e){console.error(e);toast('Erro PDF: '+e.message,'error');}});
+    bon('ccWord',function(){try{exportPdfFuncToWord(ccExportPDF,ccNomeFich());}catch(e){console.error(e);toast('Erro Word: '+e.message,'error');}});
+    bon('ccXLS',function(){try{ccExportXLS();}catch(e){console.error(e);toast('Erro Excel: '+e.message,'error');}});
+    bon('ccWA',function(){try{ccWhatsApp();}catch(e){console.error(e);toast('Erro: '+e.message,'error');}});
+    m.addEventListener('change',function(ev){if(!CC)return;var t=ev.target;
+      if(t.id==='ccRegFile'){var f=t.files&&t.files[0];if(f)ccLerPdf(f);t.value='';return;}
+      if(t.id==='ccSoCom'){CC.soComAtletas=t.checked;CC_SUJO=true;gi('ccPrev').innerHTML=ccDocHTML();return;}
+      if(t.id==='ccJuntaUm'){if(ccJuntarAtleta(t.value)){CC_SUJO=true;ccRender();}return;}
+      if(t.id==='ccComp'){CC.compId=t.value;var c=(D.competicoes||[]).find(function(x){return x.id===t.value;});
+        if(c){CC.nome=CC.nome||c.nome||'';CC.local=CC.local||c.local||'';CC.piscina=CC.piscina||c.piscina||'';
+          if(!CC.data&&c.data){var a1=c.data.split('-'),a2=(c.dataFim||'').split('-');CC.data=(c.dataFim&&c.dataFim!==c.data?(+a1[2])+(a1[1]===a2[1]?'':' '+MS[+a1[1]-1].toLowerCase())+'-'+(+a2[2])+' '+MS[+a2[1]-1].toLowerCase()+' '+a2[0]:(+a1[2])+' '+MS[+a1[1]-1].toLowerCase()+' '+a1[0]);}}
+        CC_SUJO=true;ccRender();return;}
+      var k=t.getAttribute('data-ccs');
+      if(k){var s=sessDe(t);if(!s)return;
+        if(k==='jornada')s.jornada=Math.max(1,+t.value||1);
+        else if(k==='aquec'){s.aquec=t.value;s.aquecManual=!!t.value&&t.value!==ccAquecAuto(s);}
+        else if(k==='encontro'){s.encontro=t.value;s.encManual=!!t.value&&t.value!==ccEncAuto(Object.assign({},s,{aquec:ccAquec(s)}));}
+        else s[k]=t.value;
+        CC_SUJO=true;ccRender();return;}
+      k=t.getAttribute('data-ccv');if(k){CC.viagens[+t.getAttribute('data-vi')][k]=t.value;CC_SUJO=true;gi('ccPrev').innerHTML=ccDocHTML();return;}
+      k=t.getAttribute('data-cc');if(k){CC[k]=t.value;CC_SUJO=true;gi('ccPrev').innerHTML=ccDocHTML();}
+    });
+    m.addEventListener('input',function(ev){if(!CC)return;var t=ev.target,k=t.getAttribute('data-cc');
+      if(k&&t.tagName!=='SELECT'){CC[k]=t.value;CC_SUJO=true;}
+      k=t.getAttribute('data-ccv');if(k&&t.tagName!=='SELECT'){CC.viagens[+t.getAttribute('data-vi')][k]=t.value;CC_SUJO=true;}});
+    m.addEventListener('click',function(ev){if(!CC)return;var t=ev.target.closest('button,a');if(!t||!m.contains(t))return;var v;
+      if(t.id==='ccRegLer'){ev.preventDefault();var tx=(gi('ccRegTxt')||{}).value||'';if(!tx.trim()){toast('Cola o texto do programa','error');return;}ccAplicarLeitura(tx.split(/\r?\n/),'texto colado');return;}
+      if(t.id==='ccSesAdd'){var ult=CC.sessoes[CC.sessoes.length-1];CC.sessoes.push({id:gid(),jornada:ult?ult.jornada:1,data:ult?ult.data:'',inicio:'',abertura:'',aquecReg:'',provas:[]});CC_SUJO=true;ccRender();return;}
+      if(t.id==='ccJuntaEsc'){var n=0;ccNadAtivos().forEach(function(x){if((CC.escSel||[]).indexOf(x.escalao)>=0&&ccJuntarAtleta(x.id))n++;});CC_SUJO=true;ccRender();toast(n+' atleta(s) juntado(s)','success');return;}
+      if(t.id==='ccViaAdd'){var s0=CC.sessoes[0];CC.viagens.push({tipo:CC.viagens.length?'Regresso':'Saída',data:s0?s0.data:'',hora:'',local:''});CC_SUJO=true;ccRender();return;}
+      if((v=t.getAttribute('data-cc-esc'))!=null){CC.escSel=CC.escSel||[];var ix=CC.escSel.indexOf(v);if(ix>=0)CC.escSel.splice(ix,1);else CC.escSel.push(v);ccRender();return;}
+      if((v=t.getAttribute('data-cc-tr'))!=null){var j=CC.transp.indexOf(v);if(j>=0)CC.transp.splice(j,1);else CC.transp.push(v);CC.transp.sort(function(a,b){return CC_TRANSP.indexOf(a)-CC_TRANSP.indexOf(b);});CC_SUJO=true;ccRender();return;}
+      if((v=t.getAttribute('data-cc-cel'))){var p=v.split('|'),aid=p[0],key=p[1],col=null;
+        CC.sessoes.some(function(s){return ccColunas(s).some(function(c){if(c.key===key){col=c;return true;}});});
+        var cur=CC.marcas[v]||'',nv;
+        if(col&&col.est){nv=cur===''?'1':(+cur>=4?'':String(+cur+1));}else nv=cur?'':'X';
+        if(nv)CC.marcas[v]=nv;else delete CC.marcas[v];CC_SUJO=true;
+        t.textContent=nv;t.classList.toggle('on',!!nv);
+        var row=t.closest('tr'),sm=row&&row.querySelector('td small');if(sm)sm.textContent=ccNumInd(aid)+' ind.';
+        gi('ccPrev').innerHTML=ccDocHTML();return;}
+      if((v=t.getAttribute('data-cc-sx'))){var at=CC.atletas.find(function(x){return x.id===v;});if(at){at.sexo=at.sexo==='F'?'M':'F';var nd=ccNad(v);if(nd){nd.sexo=at.sexo;}CC_SUJO=true;ccRender();}return;}
+      ev.preventDefault();
+      if((v=t.getAttribute('data-cc-atx'))){CC.atletas=CC.atletas.filter(function(x){return x.id!==v;});Object.keys(CC.marcas).forEach(function(k){if(k.indexOf(v+'|')===0)delete CC.marcas[k];});CC_SUJO=true;ccRender();return;}
+      if((v=t.getAttribute('data-cc-tira'))!=null){var sx=CC.sessoes[+v];if(!confirm('Tirar a '+ccSessLbl(sx,+v)+'?'))return;CC.sessoes.splice(+v,1);CC_SUJO=true;ccRender();return;}
+      if((v=t.getAttribute('data-cc-sup'))!=null){v=+v;if(v>0){var tmp=CC.sessoes[v-1];CC.sessoes[v-1]=CC.sessoes[v];CC.sessoes[v]=tmp;CC_SUJO=true;ccRender();}return;}
+      if((v=t.getAttribute('data-cc-auto'))!=null){var sa=CC.sessoes[+v];sa.aquecManual=sa.encManual=false;sa.aquec=sa.encontro='';CC_SUJO=true;ccRender();return;}
+      if((v=t.getAttribute('data-cc-pxx'))){var q=v.split(':');CC.sessoes[+q[0]].provas.splice(+q[1],1);CC_SUJO=true;ccRender();return;}
+      if((v=t.getAttribute('data-cc-padd'))!=null){var i=+v,se=CC.sessoes[i],d=+gi('ccAd'+i).value,e=gi('ccAe'+i).value,g=gi('ccAg'+i).value,es=gi('ccAs'+i).checked;
+        var gens=g?[g]:['F','M'],num=se.provas.reduce(function(a,p){return Math.max(a,p.num||0);},0);
+        gens.forEach(function(gg){if(!se.provas.some(function(p){return p.dist===d&&p.estilo===e&&p.gen===gg&&!!p.est===es;}))se.provas.push({id:gid(),num:++num,dist:d,estilo:e,gen:gg,est:es});});
+        CC_SUJO=true;ccRender();return;}
+    });
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wire);else wire();
+})();
+
+</script>
+<!-- CC-FIM -->
 </body>
 </html>
