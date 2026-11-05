@@ -28642,6 +28642,7 @@ function bibGuardarSecao(sec){
 })();
 
 </script>
+
 <!-- CC-INICIO -->
 <style>
 .cc-sec{border:1px solid var(--b);border-radius:14px;padding:14px;margin-bottom:14px;background:rgba(13,42,84,.18)}
@@ -28721,10 +28722,10 @@ var CC_DIAS=['dom','seg','ter','qua','qui','sex','sáb'];
 function ccDataLbl(iso,longo){if(!iso)return '';var p=iso.split('-');var d=new Date(+p[0],+p[1]-1,+p[2]);var dias=longo?['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado']:CC_DIAS;return dias[d.getDay()]+' '+(+p[2])+' '+MS[+p[1]-1].toLowerCase();}
 
 // ── provas ──
-function ccEstiloDe(w){w=ccNorm(w);
-  if(/^(livre|livres|crol)/.test(w))return 'Livres';if(/^costas/.test(w))return 'Costas';
-  if(/^(brucos|mama)/.test(w))return 'Bruços';if(/^(mariposa|borboleta)/.test(w))return 'Mariposa';
-  if(/^(estilos|medley)/.test(w))return 'Estilos';return '';}
+function ccEstiloDe(w){w=ccNorm(w).replace(/\./g,'');
+  if(/^(livre|livres|liv|crol)$/.test(w))return 'Livres';if(/^(costas|cos)$/.test(w))return 'Costas';
+  if(/^(brucos|bru|mama)$/.test(w))return 'Bruços';if(/^(mariposa|mar|borboleta)$/.test(w))return 'Mariposa';
+  if(/^(estilos|est|medley)$/.test(w))return 'Estilos';return '';}
 function ccProvaLbl(p,curto){var e=curto?(CC_ABR[p.estilo]||p.estilo):p.estilo;return (p.est?'4×':'')+p.dist+(curto?' ':'m ')+e;}
 function ccGenLbl(g){return g==='F'?'Fem.':g==='M'?'Masc.':g==='X'?'Misto':'';}
 // Colunas da grelha de uma sessão: junta Fem./Masc. da mesma prova
@@ -28767,7 +28768,7 @@ function ccHorasEm(t){
     out.push({i:m.index,hhmm:String(h).padStart(2,'0')+':'+String(mi).padStart(2,'0'),tipo:tipo});}
   return out;
 }
-var CC_RE_PROVA=/(4\s*[x×]\s*)?(?<![\d,.])(50|100|200|400|800|1500)\s*(?:m\b|metros)?\s*(?:de\s+)?(?:estilo\s+)?(livres?|crol|costas|bru[çc]os|mama|mariposa|borboleta|estilos|medley)/gi;
+var CC_RE_PROVA=/(4\s*[x×]\s*)?(?<![\d,.])(50|100|200|400|800|1500)\s*(?:m\b|metros)?\s*(?:de\s+)?(?:estilo\s+)?(livres?|liv\.?|crol|costas|cos\.?|bru[çc]os|bru\.?|mama|mariposa|mar\.?|borboleta|estilos|est\.?|medley)(?![a-zà-ÿ])/gi;
 function ccProvasEm(t){
   var out=[],re=new RegExp(CC_RE_PROVA.source,'gi'),m,ms=[];
   while((m=re.exec(t)))ms.push({i:m.index,f:m.index+m[0].length,est:!!m[1]||/estafeta/i.test(t.slice(Math.max(0,m.index-14),m.index)),dist:+m[2],estilo:ccEstiloDe(m[3])});
@@ -28778,7 +28779,7 @@ function ccProvasEm(t){
     if(/femin|\bfem\b|senhoras|\bf\b/.test(cauda))gens.push('F');
     if(/mascul|\bmasc\b|homens|\bm\b/.test(cauda))gens.push('M');
     if(/mist/.test(cauda)||/mist/.test(cab.slice(-12)))gens=['X'];
-    var nm=/(?:^|\s)(\d{1,2})\s*[.)\-–ºª:]?\s*(?:estafeta\s*)?$/.exec(cab.slice(-14));
+    var nm=/(?:^|\s)(\d{1,3})\s*[.)\-–ºª:]{0,2}\s*(?:prova\s*)?(?:n\.?\s*[ºo]?\s*)?(?:estafeta\s*)?$/.exec(cab.slice(-22));
     var num=nm?+nm[1]:null;
     if(!gens.length)gens=[''];
     gens.forEach(function(g,gi){out.push({num:num?(gens.length>1?num+gi:num):null,dist:p.dist,estilo:p.estilo,est:p.est&&p.dist<=200,gen:g});});
@@ -28792,18 +28793,24 @@ function ccInterpretar(linhas){
   CC_ANO_DOC=null;
   linhas.some(function(L){var m=/(\d{1,2})\s*(?:de\s+)?(janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\s*(?:de\s+)?(20\d\d)/.exec(ccNorm(L));if(m){CC_ANO_DOC={ano:+m[3],mes:CC_MES[m[2].slice(0,3)]};return true;}});
   var sess=[],cur=null,jorn=1,dataAtual='',viuSessao=false,soltas=[];
-  function nova(num){cur={id:gid(),jornada:jorn,num:num,data:dataAtual,abertura:'',inicio:'',aquecReg:'',provas:[]};sess.push(cur);viuSessao=true;}
-  linhas.forEach(function(L){
+  // modo bloco (PDF com cabeçalhos de sessão): só o texto dentro dos blocos (\u0001) conta para horas e provas
+  var modoBloco=linhas.some(function(L){return L.charAt(0)==='\u0001';});
+  function nova(num,j){
+    var ex=sess.find(function(s){return s.num===num&&s.jornada===j;});
+    if(ex){cur=ex;viuSessao=true;return;}
+    cur={id:gid(),jornada:j,num:num,data:'',abertura:'',inicio:'',aquecReg:'',provas:[]};sess.push(cur);viuSessao=true;}
+  linhas.forEach(function(L0){
+    var bloco=L0.charAt(0)==='\u0001',L=bloco?L0.slice(1):L0;
     var n=ccNorm(L);if(!n.trim())return;
-    var jm=CC_RE_JORN.exec(n);if(jm&&n.split(/\s+/).length<=12){jorn=+(jm[1]||jm[2]);}
     var datas=ccDatasEm(L),horas=ccHorasEm(L);
-    var sm=CC_RE_SESS.exec(n),curta=n.split(/\s+/).length<=14;
+    var sm=bloco?null:CC_RE_SESS.exec(n),curta=n.split(/\s+/).length<=14;
+    var jm=bloco?null:CC_RE_JORN.exec(n);if(jm&&curta){jorn=+(jm[1]||jm[2]);}
     if(sm&&(curta||datas.length||horas.length)){
-      var num=+(sm[1]||sm[2]);
-      if(!(cur&&cur.num===num&&!cur.provas.length))nova(num);
-      if(jm)cur.jornada=+(jm[1]||jm[2]);
+      nova(+(sm[1]||sm[2]),jm?+(jm[1]||jm[2]):jorn);
+      if(!cur.data)cur.data=datas.length?datas[0].iso:dataAtual;
     }
-    if(datas.length){dataAtual=datas[0].iso;if(cur&&!cur.provas.length)cur.data=datas[0].iso;}
+    if(modoBloco&&!bloco&&!sm){if(datas.length&&(jm||!viuSessao))dataAtual=datas[0].iso;return;}
+    if(datas.length){dataAtual=datas[0].iso;if(cur&&!cur.provas.length&&!sm)cur.data=cur.data||datas[0].iso;}
     if(cur&&horas.length){
       horas.forEach(function(h,hi){
         if(h.tipo==='abertura'){if(!cur.abertura)cur.abertura=h.hhmm;}
@@ -28812,9 +28819,9 @@ function ccInterpretar(linhas){
         else if(!cur.inicio&&!cur.provas.length&&(hi===0||!horas[hi-1].tipo))cur.inicio=h.hhmm;
       });
     }
-    var pv=ccProvasEm(L);
+    var pv=(bloco||curta)?ccProvasEm(L):[];
     if(pv.length){if(!viuSessao){soltas=soltas.concat(pv);return;}
-      if(!cur)nova(1);
+      if(!cur)nova(1,jorn);
       pv.forEach(function(p){
         var dup=cur.provas.some(function(q){return q.dist===p.dist&&q.estilo===p.estilo&&q.gen===p.gen&&q.est===p.est;});
         if(!dup)cur.provas.push(Object.assign({id:gid()},p));
@@ -28826,42 +28833,78 @@ function ccInterpretar(linhas){
     soltas.forEach(function(p){if(!cur.provas.some(function(q){return q.dist===p.dist&&q.estilo===p.estilo&&q.gen===p.gen&&q.est===p.est;}))cur.provas.push(Object.assign({id:gid()},p));});sess=[cur];}
   // numeração sequencial das sessões e jornada por dia, quando o regulamento não indica jornada
   var temJorn=linhas.some(function(L){return CC_RE_JORN.test(ccNorm(L));});
+  sess.sort(function(a,b){return (a.data||'9').localeCompare(b.data||'9')||(a.jornada-b.jornada)||(a.num-b.num);});
   if(!temJorn){var dias=[];sess.forEach(function(s){if(s.data&&dias.indexOf(s.data)<0)dias.push(s.data);});
     sess.forEach(function(s){s.jornada=s.data?dias.indexOf(s.data)+1:1;});}
   return sess;
 }
-// pdf.js: itens com posição → linhas em ordem de leitura, com colunas de sessões lado a lado
+// pdf.js: itens com posição → linhas em ordem de leitura.
+// Cada cabeçalho "Nª jornada (Nª sessão)" é uma âncora; o texto por baixo, na mesma coluna, forma o bloco dessa sessão
+// (linha com prefixo \u0001). O bloco acaba no cabeçalho seguinte, num título numerado ("5. PARTICIPAÇÃO"),
+// numa linha só de jornada ou numa linha que atravessa as colunas.
+var CC_RE_ANC=/(\d+\s*[ªºa.°]{0,3}\s*jornada\b.{0,6}?)?(?:\d+\s*[ªºa.°]{0,3}\s*sess(?:ao|oes)\b|sessao\s*(?:n\.?\s*[ºo]?\s*)?\d+)/g;
 function ccLinhasDeItens(items){
   var rows=[];
   items.filter(function(it){return it.str&&it.str.trim();}).forEach(function(it){
-    var y=it.y,r=null;for(var i=0;i<rows.length;i++){if(Math.abs(rows[i].y-y)<=3){r=rows[i];break;}}
-    if(!r){r={y:y,its:[]};rows.push(r);}r.its.push(it);
+    var r=null;for(var i=0;i<rows.length;i++){if(Math.abs(rows[i].y-it.y)<=3){r=rows[i];break;}}
+    if(!r){r={y:it.y,its:[]};rows.push(r);}r.its.push(it);
   });
   rows.sort(function(a,b){return b.y-a.y;});
   rows.forEach(function(r){
     r.its.sort(function(a,b){return a.x-b.x;});
     var segs=[],s=null;
     r.its.forEach(function(it){
-      if(s&&it.x-s.x1<=18){s.t+=(it.x-s.x1>1.5?' ':'')+it.str;s.x1=it.x+it.w;}
-      else{s={x0:it.x,x1:it.x+it.w,t:it.str};segs.push(s);}
+      if(s&&it.x-s.x1<=18){var pv=s.its[s.its.length-1],cw=pv.str.length?pv.w/pv.str.length:5,sp=it.x-s.x1>Math.max(1.5,cw*0.3)?' ':'';s.map.push({k:s.t.length+sp.length,it:it});s.t+=sp+it.str;s.x1=it.x+it.w;s.its.push(it);}
+      else{s={x0:it.x,x1:it.x+it.w,t:it.str,its:[it],map:[{k:0,it:it}]};segs.push(s);}
     });
     r.segs=segs;r.t=segs.map(function(q){return q.t;}).join('  ');
+    // âncoras de sessão nesta linha
+    r.anc=[];
+    segs.forEach(function(q){
+      var n=ccNorm(q.t),m,occ=[];CC_RE_ANC.lastIndex=0;
+      while((m=CC_RE_ANC.exec(n))){occ.push(m.index);}
+      occ.forEach(function(k,oi){
+        if(oi===0&&k>4)return; // menção no meio de uma frase
+        var fim=oi+1<occ.length?occ[oi+1]:q.t.length,txt=q.t.slice(k,fim).trim();
+        if(txt.split(/\s+/).length>14)return;
+        var mp=q.map[0];q.map.forEach(function(e){if(e.k<=k)mp=e;});
+        var x=mp.it.x+(mp.it.str.length?(k-mp.k)/mp.it.str.length*mp.it.w:0);
+        r.anc.push({x:x,t:txt,seg:q});
+      });
+    });
   });
-  var out=[],cols=null,buckets=null;
-  function despeja(){if(buckets){buckets.forEach(function(b){out.push.apply(out,b);});}cols=null;buckets=null;}
+  var anc=[];rows.forEach(function(r){r.anc.forEach(function(a){anc.push(a);});});
+  if(!anc.length)return rows.map(function(r){return r.t;});
+  // colunas: agrupa as âncoras pelo x
+  var xs=anc.map(function(a){return a.x;}).sort(function(a,b){return a-b;}),cl=[];
+  xs.forEach(function(x){if(!cl.length||x-cl[cl.length-1].x>60)cl.push({x:x,n:1});else{var c=cl[cl.length-1];c.x=(c.x*c.n+x)/(c.n+1);c.n++;}});
+  var bnd=[];for(var i=1;i<cl.length;i++)bnd.push(Math.max((cl[i-1].x+cl[i].x)/2,cl[i].x-35));
+  function col(x){var c=0;bnd.forEach(function(b){if(x>=b)c++;});return c;}
+  var units=[],ativo=bnd.map(function(){return null;}).concat([null]);
+  function fecha(){for(var c=0;c<ativo.length;c++)ativo[c]=null;}
   rows.forEach(function(r){
-    var heads=r.segs.filter(function(q){return CC_RE_SESS.test(ccNorm(q.t));});
-    if(heads.length>=2){despeja();cols=heads.map(function(h){return h.x0;});buckets=cols.map(function(){return [];});}
-    else if(heads.length===1&&cols){despeja();}
-    if(cols){
-      var antes=[];
-      r.segs.forEach(function(q){var ci=-1;for(var c=0;c<cols.length;c++){if(q.x0>=cols[c]-25)ci=c;}
-        if(ci<0)antes.push(q.t);else buckets[ci].push(q.t);});
-      if(antes.length){/* texto à esquerda das colunas (ex.: nº da prova): repete-se em cada coluna */
-        buckets.forEach(function(b){if(b.length)b[b.length-1]=antes.join(' ')+' '+b[b.length-1];});}
-    } else out.push(r.t);
+    var sec=/^\s*\d{1,2}\s*[.)]\s*[A-ZÁÉÍÓÚÂÊÔÃÕÇ]{3,}/.test(r.t)||/^\s*(programa|hor[aá]rio)s?\b/i.test(r.t);
+    var nr=ccNorm(r.t),soJorn=!r.anc.length&&CC_RE_JORN.test(nr)&&nr.split(/\s+/).length<=12;
+    var cruza=bnd.length&&r.its.some(function(it){return bnd.some(function(b){return it.x<b-20&&it.x+it.w>b+20;});});
+    if(!r.anc.length&&(sec||soJorn||cruza)){fecha();units.push({t:r.t});return;}
+    var usados=[];
+    r.anc.forEach(function(a){var c=col(a.x),u={cab:a.t,its:[]};ativo[c]=u;units.push(u);usados.push(a.seg);});
+    var solto=[];
+    r.segs.forEach(function(q){
+      if(usados.indexOf(q)>=0)return;
+      q.its.forEach(function(it){var c=col(it.x);if(ativo[c])ativo[c].its.push(it);else solto.push(it);});
+    });
+    if(solto.length){var t='',x1=null,cw=5;solto.forEach(function(it){t+=(x1!=null&&it.x-x1>Math.max(1.5,cw*0.3)?' ':'')+it.str;x1=it.x+it.w;cw=it.str.length?it.w/it.str.length:5;});units.push({t:t});}
   });
-  despeja();
+  var out=[];
+  units.forEach(function(u){
+    if(u.t!=null){out.push(u.t);return;}
+    out.push(u.cab);
+    var lin=[];u.its.forEach(function(it){var L=null;for(var i=0;i<lin.length;i++){if(Math.abs(lin[i].y-it.y)<=6){L=lin[i];break;}}if(!L){L={y:it.y,its:[]};lin.push(L);}L.its.push(it);});
+    lin.sort(function(a,b){return b.y-a.y;});
+    var txt=lin.map(function(L){L.its.sort(function(a,b){return a.x-b.x;});var t='',x1=null,cw=5;L.its.forEach(function(it){t+=(x1!=null&&it.x-x1>Math.max(1.5,cw*0.3)?' ':'')+it.str;x1=it.x+it.w;cw=it.str.length?it.w/it.str.length:5;});return t;}).join(' ');
+    if(txt.trim())out.push('\u0001'+txt);
+  });
   return out;
 }
 function ccCarregarPdfJs(cb){
@@ -28888,6 +28931,40 @@ function ccLerPdf(file){
     fr.readAsArrayBuffer(file);
   });
 }
+// Título: 1.ª linha com campeonato/torneio/… + linhas seguintes curtas em maiúsculas (título em várias linhas)
+function ccTitleCase(t){var pq=['de','da','do','das','dos','e','a','o','em','na','no'];
+  return t.toLowerCase().split(/(\s+)/).map(function(w,i){if(/^\s+$/.test(w))return w;if(i&&pq.indexOf(w)>=0)return w;
+    if(/^(i{1,3}|iv|vi{0,3})$/.test(w))return w.toUpperCase();return w.charAt(0).toUpperCase()+w.slice(1);}).join('').replace(/\b(\d+)\.ª/g,'$1.ª');}
+function ccTituloDe(L){
+  var re=/\b(campeonatos?|torneios?|meetings?|festival|ta[çc]as?|encontros?|circuitos?|gala|trof[eé]u|open|nacionais|regionais|territoriais|interassocia[çc][õo]es)\b/i;
+  for(var i=0;i<Math.min(L.length,15);i++){
+    var t=L[i].trim();if(!re.test(t)||CC_RE_SESS.test(ccNorm(t))||/^\d+\s*[.)]/.test(t))continue;
+    var parts=[t];
+    for(var j=i+1;j<Math.min(L.length,i+4);j++){var u=L[j].trim();
+      if(!u||/^\d+\s*[.)]/.test(u)||u.split(/\s+/).length>9||u!==u.toUpperCase()||/\d{1,2}h|\d:\d/.test(u))break;parts.push(u);}
+    var tit=parts.join(' ').replace(/\s+/g,' ').split(/[;:]/)[0].trim();
+    if(tit===tit.toUpperCase())tit=ccTitleCase(tit);
+    return tit.slice(0,140);
+  }
+  return '';
+}
+// Piscina: 1) escrita no regulamento; 2) a de outra competição/convocatória no mesmo local; 3) estimada pela época do ano
+function ccPiscinaDe(linhas,local,sess){
+  var tt=ccNorm(linhas.join(' ').replace(/\u0001/g,''));
+  if(/piscina (olimpica|de 50)|tanque de 50|50\s*m(etros)?\s*[,(]?\s*(8|10) pistas|\(50\s*m\)|\b50\s*m(etros)?\b[^.]{0,30}piscina|piscina[^.]{0,40}\b50\s*m(etros)?\b|piscina longa|\bpl\b\s*\(50/.test(tt))return {p:'50m',info:''};
+  if(/piscina de 25|tanque de 25|25\s*m(etros)?\s*[,(]?\s*(6|8) pistas|\(25\s*m\)|\b25\s*m(etros)?\b[^.]{0,30}piscina|piscina[^.]{0,40}\b25\s*m(etros)?\b|piscina curta/.test(tt))return {p:'25m',info:''};
+  var ln=ccNorm(local||'').replace(/piscinas?|municipa(l|is)|complexo|desportivo|de|da|do|\W/g,' ').split(/\s+/).filter(function(w){return w.length>3;});
+  if(ln.length){
+    var fontes=(D.competicoes||[]).filter(function(c){return c.piscina&&c.local;}).map(function(c){return {l:c.local,p:c.piscina,d:c.data||''};})
+      .concat(ccLista().filter(function(c){return c.piscina&&c.local&&(!CC||c.id!==CC.id);}).map(function(c){return {l:c.local,p:c.piscina,d:c.alterada||''};}));
+    fontes.sort(function(a,b){return (b.d||'').localeCompare(a.d||'');});
+    var f=fontes.find(function(c){var x=ccNorm(c.l);return ln.every(function(w){return x.indexOf(w)>=0;});});
+    if(f)return {p:f.p,info:'🏊 Piscina '+f.p+': a mesma de outra prova em «'+f.l+'» (confirma).'};
+  }
+  var d=(sess[0]&&sess[0].data)||'',m=d?+d.split('-')[1]:new Date().getMonth()+1;
+  var p=(m>=9||m<=3)?'25m':'50m';
+  return {p:p,info:'🏊 O regulamento não indica a piscina: assumi '+p+' (época de '+(p==='25m'?'piscina curta':'piscina longa')+'). Confirma.'};
+}
 function ccAplicarLeitura(linhas,fonte){
   var sess=ccInterpretar(linhas);
   var nP=sess.reduce(function(a,s){return a+s.provas.length;},0);
@@ -28895,11 +28972,20 @@ function ccAplicarLeitura(linhas,fonte){
     CC.regInfo='«'+fonte+'»: não encontrei o programa de provas. Podes colar o texto ou juntar as sessões à mão.';ccRender();return;}
   if(CC.sessoes.length&&!confirm('Substituir as '+CC.sessoes.length+' sessões atuais pelas lidas do regulamento?')){return;}
   // dados gerais, se ainda vazios
-  if(!CC.nome){linhas.slice(0,30).some(function(L){var m=/\b(campeonato|torneio|meeting|festival|ta[çc]a|encontro|circuito|gala)\b.{4,}/i.exec(L);if(m){CC.nome=m[0].split(/\s[–—-]\s|[;:]/)[0].replace(/\s+/g,' ').trim().slice(0,90);return true;}});}
-  if(!CC.piscina){var tt=ccNorm(linhas.join(' '));if(/piscina de 50|50\s*m(etros)?\s*\(?(8|10) pistas|tanque de 50|\b50 m\b.*piscina|piscina.*\b50 m\b/.test(tt))CC.piscina='50m';else if(/piscina de 25|tanque de 25|piscina.*\b25 m\b/.test(tt))CC.piscina='25m';}
+  var limpas=linhas.filter(function(L){return L.charAt(0)!=='\u0001';});
+  // preenche os campos vazios ou que vieram de uma leitura anterior (não mexe no que foi escrito à mão)
+  var A=CC.auto||{};CC.auto={};
+  function poe(k,v){if(v&&(!CC[k]||CC[k]===A[k])){CC[k]=v;CC.auto[k]=v;}else if(CC[k]===A[k])CC.auto[k]=A[k];}
+  poe('nome',ccTituloDe(limpas));
+  limpas.slice(0,40).forEach(function(L){
+    var m=/\bdatas?\s*:\s*(.{4,60})/i.exec(L);if(m&&!CC.auto.data)poe('data',m[1].trim());
+    m=/\blocal\s*:\s*(.{3,80})/i.exec(L);if(m&&!CC.auto.local)poe('local',m[1].trim());
+  });
+  CC.pisInfo='';
+  if(!CC.piscina||CC.piscina===A.piscina){var r=ccPiscinaDe(linhas,CC.local,sess);poe('piscina',r.p);CC.pisInfo=r.info;}
   var semInicio=sess.filter(function(s){return !s.inicio;}).length;
   CC.sessoes=sess;CC.marcas={};CC_SUJO=true;
-  CC.regInfo='«'+fonte+'»: '+sess.length+' sessões e '+nP+' provas lidas.'+(semInicio?' ⚠️ '+semInicio+' sessão(ões) sem hora de início: preenche-a para calcular o aquecimento e o encontro.':' Confirma os dias e as horas.');
+  CC.regInfo='«'+fonte+'»: '+sess.length+' sessões e '+nP+' provas lidas.'+(CC.pisInfo?' '+CC.pisInfo:'')+(semInicio?' ⚠️ '+semInicio+' sessão(ões) sem hora de início: preenche-a para calcular o aquecimento e o encontro.':' Confirma os dias e as horas.');
   ccRender();toast(sess.length+' sessões · '+nP+' provas','success');
 }
 
@@ -29022,7 +29108,7 @@ function ccGrelhaHTML(){
   if(!CC.sessoes.length)return '<div style="font-size:12px;color:var(--wd)">Primeiro carrega o regulamento ou junta uma sessão.</div>';
   if(!ats.length)return '<div style="font-size:12px;color:var(--wd)">Junta atletas na secção 3.</div>';
   var h='<div class="cc-gw"><table class="cc-gr"><thead><tr><th class="cc-st" rowspan="2">Atleta</th>';
-  CC.sessoes.forEach(function(s,i){var c=ccColunas(s);h+='<th colspan="'+Math.max(1,c.length)+'" class="cc-sh">'+(i+1)+'ª sessão'+(s.data?' · '+ccDataLbl(s.data):'')+'</th>';});
+  CC.sessoes.forEach(function(s,i){var c=ccColunas(s);h+='<th colspan="'+Math.max(1,c.length)+'" class="cc-sh">'+ccE(ccSessLbl(s,i).replace(' jornada','J').replace(' sessão','S'))+(s.data?' · '+ccDataLbl(s.data):'')+'</th>';});
   h+='</tr><tr>';
   CC.sessoes.forEach(function(s){var c=ccColunas(s);if(!c.length)h+='<th class="cc-sh">—</th>';c.forEach(function(col,ci){h+='<th class="'+(ci===0?'cc-sh':'')+'">'+(col.est?'4×':'')+'<small>'+(CC_ABR[col.estilo]||'')+'</small><br>'+col.dist+'</th>';});});
   h+='</tr></thead><tbody>';
