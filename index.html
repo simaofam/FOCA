@@ -29315,5 +29315,255 @@ function ccRenderLista(){
 
 </script>
 <!-- CC-FIM -->
+<!-- ND-INICIO -->
+<style>
+.nd-imp{width:100%;border-collapse:collapse;font-size:12.5px}.nd-imp th{text-align:left;color:var(--wd);font-weight:600;padding:6px;border-bottom:1px solid var(--b);white-space:nowrap}
+.nd-imp td{padding:6px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:top}.nd-imp tr.nd-assoc td:first-child{border-left:3px solid #00e5a0}
+.nd-imp tr.nd-novo td:first-child{border-left:3px solid #00c2ff}
+@media(max-width:600px){.nd-imp thead{display:none}.nd-imp,.nd-imp tbody,.nd-imp tr,.nd-imp td{display:block;width:100%;box-sizing:border-box}.nd-imp tr{border-bottom:1px solid var(--b);padding:6px 0}.nd-imp td{border:0!important;padding:2px 8px}.nd-imp tr.nd-assoc{border-left:3px solid #00e5a0}.nd-imp tr.nd-novo{border-left:3px solid #00c2ff}.nd-imp tr.nd-ign{border-left:3px solid #666}.nd-imp select{min-width:0!important;width:100%}.nd-imp td:nth-child(2)::before{content:'Nasc. '}.nd-imp td:nth-child(3)::before{content:'RPs: '}.nd-imp td:nth-child(2),.nd-imp td:nth-child(3){display:inline-block;width:auto;font-size:12px;color:var(--wd)}}.nd-imp tr.nd-ign{opacity:.55}.nd-imp tr.nd-ign td:first-child{border-left:3px solid #666}
+.cc-info{border-left:3px solid var(--a);background:rgba(0,194,255,.07);padding:8px 10px;border-radius:6px;font-size:12.5px;color:var(--wd);margin:6px 0 10px;line-height:1.45}
+</style>
+<div class="mo" id="mNdImp"><div class="md mw" style="width:1000px">
+  <div class="mt">📥 Atualizar nadadores pelo PDF de Recordes Pessoais</div>
+  <div id="ndImpBody"></div>
+  <div class="ma"><button class="btn bg" id="ndImpCancel">Cancelar</button><button class="btn bp" id="ndImpOk">✓ Confirmar e gravar</button></div>
+</div></div>
+<script>
+// ═══ NADADORES: categoria automática, lista simplificada, PDF/Word e atualização pelo PDF de Recordes Pessoais ═══
+// Categoria FPN calculada pela idade a 31/12 do 1.º ano da época (cs): ≥18 Sénior · 16–17 Júnior · 15 Juvenil A · 14 Juvenil B.
+// Mais novos: sem categoria automática. O Escalão (equipa: Absolutos, Infantis…) não é alterado.
+var ND_IGNORAR=[['almeida','jorge'],['silva','glauber'],['marinho','simao'],['marinho','filipe']]; // adultos a ignorar por defeito
+var ND_EST={liv:'Crol',mar:'Mariposa',cos:'Costas',bru:'Bruços',est:'Estilos'};
+var ND_IMP=null;
+
+function ndE(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function ndNorm(s){return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z\s]/g,' ').replace(/\s+/g,' ').trim();}
+function ndAnoEpoca(ep){var m=/(\d{4})/.exec(ep||cs||'');return m?+m[1]:new Date().getFullYear();}
+function ndCategoria(n,ep){
+  var nasc=(n&&n.nasc)||'';var m=/^(\d{4})/.exec(nasc);if(!m)return '';
+  var idade=ndAnoEpoca(ep)-(+m[1]);
+  if(idade>=18)return 'Sénior';if(idade>=16)return 'Júnior';if(idade===15)return 'Juvenil A';if(idade===14)return 'Juvenil B';return '';
+}
+var ND_CAT_COR={'Sénior':'brd','Júnior':'bgo','Juvenil A':'bgr','Juvenil B':'bq'};
+function ndDataPT(iso){if(!iso)return '—';var p=iso.split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:iso;}
+function ndGrupoOrd(g){var m=/grupo\s*([a-z])/i.exec(g||'');return m?m[1].toUpperCase().charCodeAt(0):999;}
+
+// ── lista ──
+function ndListaHTML(){
+  var nadList=filterNad(D.nadadores);
+  if(!nadList.length)return '<tr><td colspan="5">'+em('👥')+'</td></tr>';
+  var gn={'Grupo A':1,'Grupo B':2,'Grupo C':3,'Grupo D':4},gc={1:'bq',2:'bgr',3:'bgo',4:'brd'};
+  return nadList.slice().sort(function(a,b){return a.nome.localeCompare(b.nome);}).map(function(n){
+    var cat=ndCategoria(n);
+    return '<tr'+(n.arquivado?' style="opacity:.55"':'')+'><td><div class="nc"><div class="av">'+ini(n.nome)+'</div><div><div style="font-weight:500">'+ndE(n.nome)+'</div>'+(n.nasc?'<div style="font-size:11px;color:var(--wd)">'+age(n.nasc)+' anos</div>':'')+'</div></div></td>'
+      +'<td>'+(cat?'<span class="badge '+(ND_CAT_COR[cat]||'bq')+'">'+cat+'</span>':'<span style="color:var(--wd);font-size:12px">—</span>')+'</td>'
+      +'<td style="font-size:12px;white-space:nowrap">'+ndDataPT(n.nasc)+'</td>'
+      +'<td>'+(n.grupo?'<span class="badge '+(gc[gn[n.grupo]]||'bq')+'">'+ndE(n.grupo)+'</span>':'<span style="color:var(--wd);font-size:12px">—</span>')+'</td>'
+      +'<td class="ac"><button class="btn bg bs" data-act="editn" data-id="'+n.id+'">✏️</button>'
+      +'<button class="btn bd bs" data-act="deln" data-id="'+n.id+'">🗑️</button></td></tr>';
+  }).join('');
+}
+rNad=function(){
+  var tb=gi('nTB');if(!tb)return;
+  var th=tb.parentNode.querySelector('thead');if(th&&!th._nd){th.innerHTML='<tr><th>Nadador</th><th>Categoria</th><th>Data de nascimento</th><th>Grupo de trabalho</th><th></th></tr>';th._nd=1;}
+  tb.innerHTML=ndListaHTML();
+  if(typeof populateESCDynamic==='function'){try{populateESCDynamic();}catch(e){console.warn(e);}}
+};
+
+// ── ficha: mostra a categoria e não perde campos extra (arquivado, sexo…) ao guardar ──
+function ndCatFicha(){var el=gi('ndCatFicha');if(!el)return;var c=ndCategoria({nasc:gi('nNasc').value});
+  el.innerHTML='Categoria (automática, época '+ndE(cs)+'): <b>'+(c||'—')+'</b>'+(c?'':' <span style="opacity:.7">(calculada a partir de Juvenil B)</span>');}
+(function(){
+  var orig=saveN;
+  saveN=function(){
+    var eid=gi('nId').value,antes=eid?(D.nadadores||[]).find(function(x){return x.id===eid;}):null,copia=antes?JSON.parse(JSON.stringify(antes)):null;
+    orig.apply(this,arguments);
+    if(copia){var i=D.nadadores.findIndex(function(x){return x.id===eid;});
+      if(i>=0){var novo=D.nadadores[i];Object.keys(copia).forEach(function(k){if(!(k in novo))novo[k]=copia[k];});save();}}
+  };
+})();
+
+// ── PDF / Word da lista ──
+function ndExportPDF(){
+  var lista=filterNad(D.nadadores).filter(function(n){return !n.arquivado;});
+  var grupos={};lista.forEach(function(n){var g=n.grupo||'Sem grupo';(grupos[g]=grupos[g]||[]).push(n);});
+  var ks=Object.keys(grupos).sort(function(a,b){return ndGrupoOrd(a)-ndGrupoOrd(b)||a.localeCompare(b);});
+  var logo=(gi('clubLogoImg')||{}).src||'',info=(typeof resolveEscalao==='function')?resolveEscalao(currentEscalao):{label:''};
+  var h='<div class="hdr"><img src="'+logo+'"><div><div class="hdr-t">FOCA — Clube de Natação de Felgueiras</div><div class="hdr-s">Nadadores · '+ndE(info.label||'Todos')+' · Época '+ndE(cs)+' · '+lista.length+' nadadores</div></div></div>';
+  ks.forEach(function(g){
+    var L=grupos[g].sort(function(a,b){return a.nome.localeCompare(b.nome);});
+    h+='<h2>'+ndE(g)+' <span>('+L.length+')</span></h2><table><thead><tr><th style="width:28px">#</th><th>Nome</th><th>Categoria</th><th>Data de nascimento</th><th>Grupo de trabalho</th></tr></thead><tbody>'
+      +L.map(function(n,i){return '<tr><td>'+(i+1)+'</td><td><b>'+ndE(n.nome)+'</b></td><td>'+(ndCategoria(n)||'—')+'</td><td>'+ndDataPT(n.nasc)+'</td><td>'+ndE(n.grupo||'—')+'</td></tr>';}).join('')+'</tbody></table>';
+  });
+  if(!ks.length)h+='<p>Sem nadadores.</p>';
+  var css='@page{margin:0}@media print{body{padding:12mm}}body{font-family:Arial,sans-serif;color:#111;background:#fff;padding:14px;font-size:12px}'
+    +'.hdr{display:flex;align-items:center;gap:12px;border-bottom:2px solid #1a5fb4;padding-bottom:8px;margin-bottom:12px}.hdr img{width:46px;height:46px;object-fit:contain}.hdr-t{font-weight:700;font-size:15px;color:#0d2a54}.hdr-s{font-size:11px;color:#555}'
+    +'h2{font-size:14px;color:#0d2a54;margin:14px 0 6px}h2 span{color:#666;font-weight:400}table{width:100%;border-collapse:collapse;page-break-inside:auto}tr{page-break-inside:avoid}'
+    +'th{background:#0d2a54;color:#fff;text-align:left;padding:5px 7px;font-size:11px}td{border-bottom:1px solid #d5dde8;padding:5px 7px}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}';
+  var w=window.open('','_blank','width=1000,height=900');if(!w){toast('Permite popups','error');return;}
+  w.document.open();w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>FOCA — Nadadores</title><style>'+css+'</style></head><body>'+h+'<scr'+'ipt>window.onload=function(){setTimeout(function(){window.print();},400);};</scr'+'ipt></body></html>');w.document.close();
+}
+
+// ═══ PDF de Recordes Pessoais (exportação do sistema de resultados) ═══
+function ndCarregarPdfJs(cb){if(typeof ccCarregarPdfJs==='function')return ccCarregarPdfJs(cb);toast('Leitor de PDF indisponível','error');}
+// itens de uma página → [{nomePDF, nasc, rps:[{prova,piscina,tempo}]}]
+function ndLerPagina(items,acc){
+  items=items.filter(function(it){return it.str&&it.str.trim();});
+  var cols=[];
+  items.forEach(function(it){var m=/^\s*(\d{2,4})\s+(liv|mar|cos|bru|est)\w*\s*$/i.exec(it.str);
+    if(m)cols.push({c:it.x+it.w/2,prova:m[1]+'m '+ND_EST[m[2].toLowerCase()]});});
+  if(!cols.length)return;
+  var xMin=Math.min.apply(null,cols.map(function(c){return c.c;}))-20;
+  var rows=[];items.forEach(function(it){var r=null;for(var i=0;i<rows.length;i++){if(Math.abs(rows[i].y-it.y)<=2){r=rows[i];break;}}if(!r){r={y:it.y,its:[]};rows.push(r);}r.its.push(it);});
+  rows.sort(function(a,b){return b.y-a.y;});
+  var cur=acc.cur||null;
+  rows.forEach(function(r){
+    r.its.sort(function(a,b){return a.x-b.x;});
+    var txt=r.its.map(function(i){return i.str;}).join(' ');
+    if(/apelido|recordes|data nasc|p[aá]g\.|clube nata/i.test(txt))return;
+    var dm=/(\d{2})\/(\d{2})\/(\d{4})/.exec(txt),pm=/\b(25|50)\s*m\b/.exec(txt.replace(/\d{2}\/\d{2}\/\d{4}/,''));
+    var nomeIt=r.its.filter(function(i){return i.x<xMin-40&&/[A-Za-zÀ-ÿ]{2}/.test(i.str)&&!/\d{2}\/\d{2}/.test(i.str);});
+    if(dm&&nomeIt.length){
+      cur={nomePDF:nomeIt.map(function(i){return i.str.trim();}).join(' ').replace(/\s+/g,' '),nasc:dm[3]+'-'+dm[2]+'-'+dm[1],rps:[]};acc.lista.push(cur);
+    }
+    if(!cur||!pm)return;
+    var pis=pm[1]+'m';
+    r.its.forEach(function(it){
+      if(it.x<xMin)return;
+      var t=it.str.trim().replace(',','.');if(!/^(\d{1,2}:)?\d{1,2}\.\d{2}$/.test(t))return;
+      var c=it.x+it.w/2,best=null,bd=1e9;cols.forEach(function(k){var d=Math.abs(k.c-c);if(d<bd){bd=d;best=k;}});
+      if(best&&bd<=22)cur.rps.push({prova:best.prova,piscina:pis,tempo:t});
+    });
+  });
+  acc.cur=cur;
+}
+function ndNomeProprio(nomePDF){var w=nomePDF.split(/\s+/);return w.length>1?w.slice(1).join(' ')+' '+w[0]:nomePDF;}
+function ndScore(p,n){
+  var tp=ndNorm(p.nomePDF).split(' '),tn=ndNorm(n.nome).split(' ').filter(function(w){return w.length>1;});
+  var com=tn.filter(function(w){return tp.indexOf(w)>=0;}).length;if(!com)return 0;
+  var apel=tn[tn.length-1]===tp[0]?3:0,todos=com===tn.length?2:0,dn=n.nasc&&n.nasc===p.nasc;
+  if(dn)return 20+com+apel+todos;
+  if(!n.nasc&&(com>=2||apel))return 8+com+apel+todos;
+  if(n.nasc&&com>=2&&apel)return 4+com+apel+todos; // data diferente: só com nome muito parecido
+  return 0;
+}
+function ndAssociar(lista){
+  var nads=(D.nadadores||[]).slice(),pares=[];
+  lista.forEach(function(p,i){
+    var tp=ndNorm(p.nomePDF).split(' ');
+    p.ignorar=ND_IGNORAR.some(function(ig){return ig.every(function(w){return tp.indexOf(w)>=0;});});
+    p.acao=p.ignorar?'ign':'novo';p.nadId=null;p.nomeNovo=ndNomeProprio(p.nomePDF);
+    nads.forEach(function(n){var sc=ndScore(p,n);if(sc>=8)pares.push({i:i,n:n,sc:sc});});
+  });
+  pares.sort(function(a,b){return b.sc-a.sc;});
+  var usados={},feitos={};
+  pares.forEach(function(q){if(usados[q.n.id]||feitos[q.i])return;var p=lista[q.i];p.acao='assoc';p.nadId=q.n.id;p.score=q.sc;usados[q.n.id]=1;feitos[q.i]=1;});
+  ND_IMP={lista:lista,semPDF:nads.filter(function(n){return !usados[n.id]&&!n.arquivado;})};
+}
+function ndImpRender(){
+  var I=ND_IMP,nads=(D.nadadores||[]).slice().sort(function(a,b){return a.nome.localeCompare(b.nome);});
+  var nA=I.lista.filter(function(p){return p.acao==='assoc';}).length,nN=I.lista.filter(function(p){return p.acao==='novo';}).length,nI=I.lista.length-nA-nN;
+  var nRP=I.lista.filter(function(p){return p.acao!=='ign';}).reduce(function(a,p){return a+p.rps.length;},0);
+  var h='<div class="cc-info">Encontrei <b>'+I.lista.length+'</b> pessoas no PDF. Revê cada linha: <b>✅ '+nA+'</b> associadas a nadadores que já tens, <b>➕ '+nN+'</b> novas, <b>⚪ '+nI+'</b> a ignorar. '
+    +'Nada é apagado: os nadadores mantêm o id, por isso as presenças, os registos de treino, as equipas e o resto não mudam. Os nomes que já tens ficam como estão.</div>'
+    +'<label style="display:flex;gap:6px;align-items:center;font-size:13px;margin:6px 0 10px"><input type="checkbox" id="ndImpRP"'+(I.rp!==false?' checked':'')+'> Atualizar também os RPs ('+nRP+' tempos em 25m e 50m)</label>'
+    +'<div style="overflow-x:auto"><table class="nd-imp"><thead><tr><th>No PDF</th><th>Nasc.</th><th>RPs</th><th>O que fazer</th><th>Muda</th></tr></thead><tbody>';
+  I.lista.forEach(function(p,i){
+    var n=p.nadId&&(D.nadadores||[]).find(function(x){return x.id===p.nadId;});
+    var muda='';
+    if(p.acao==='assoc'&&n){var dif=[];if(n.nasc!==p.nasc)dif.push('data de nasc. '+ndDataPT(n.nasc)+' → '+ndDataPT(p.nasc));
+      var c0=ndCategoria(n),c1=ndCategoria({nasc:p.nasc});if(c0!==c1)dif.push('categoria '+(c0||'—')+' → '+(c1||'—'));muda=dif.length?dif.join('<br>'):'<span style="opacity:.6">nada na ficha</span>';}
+    else if(p.acao==='novo')muda='novo · '+(ndCategoria({nasc:p.nasc})||'sem categoria')+' · equipa Absolutos';
+    else muda='<span style="opacity:.6">ignorado</span>';
+    h+='<tr class="nd-'+p.acao+'"><td><b>'+ndE(p.nomePDF)+'</b></td><td style="white-space:nowrap">'+ndDataPT(p.nasc)+'</td><td>'+p.rps.length+'</td><td>'
+      +'<select class="fse" data-nd-ac="'+i+'" style="min-width:210px"><option value="assoc:"'+(p.acao==='assoc'?' selected':'')+' disabled>✅ Associar a…</option>'
+      +nads.map(function(x){return '<option value="assoc:'+x.id+'"'+(p.acao==='assoc'&&p.nadId===x.id?' selected':'')+'>✅ '+ndE(x.nome)+(x.nasc?' ('+x.nasc.slice(0,4)+')':'')+'</option>';}).join('')
+      +'<option value="novo"'+(p.acao==='novo'?' selected':'')+'>➕ Nadador novo</option><option value="ign"'+(p.acao==='ign'?' selected':'')+'>⚪ Ignorar</option></select>'
+      +(p.acao==='novo'?'<input class="fi" data-nd-nome="'+i+'" value="'+ndE(p.nomeNovo)+'" style="margin-top:4px" title="Nome do novo nadador (nome próprio + apelido)">':'')
+      +'</td><td style="font-size:12px">'+muda+'</td></tr>';
+  });
+  h+='</tbody></table></div>';
+  if(I.semPDF.length)h+='<div class="cc-info" style="margin-top:10px">ℹ️ '+I.semPDF.length+' nadador(es) da FOCA não aparecem no PDF e ficam como estão: '+I.semPDF.map(function(n){return ndE(n.nome);}).join(', ')+'.</div>';
+  gi('ndImpBody').innerHTML=h;
+}
+function ndImpAplicar(){
+  var I=ND_IMP;if(!I)return;
+  var rp=gi('ndImpRP')&&gi('ndImpRP').checked;
+  var alterados=0,novos=0,tempos=0,porNad=[];
+  I.lista.forEach(function(p){
+    if(p.acao==='ign')return;
+    var n=null;
+    if(p.acao==='assoc'){n=(D.nadadores||[]).find(function(x){return x.id===p.nadId;});if(!n)return;if(p.nasc&&n.nasc!==p.nasc){n.nasc=p.nasc;alterados++;}}
+    else{n={id:gid(),nome:(p.nomeNovo||ndNomeProprio(p.nomePDF)).trim(),nasc:p.nasc,escalao:'Absolutos',grupo:'',especialidade:'',estilo:'Crol',prova:'',contacto:'',notas:'Criado a partir do PDF de Recordes Pessoais ('+new Date().toLocaleDateString('pt-PT')+')'};D.nadadores.push(n);novos++;}
+    porNad.push({n:n,rps:p.rps});
+  });
+  if(rp){
+    var nomeComp=(typeof RP_COMP_NAME!=='undefined'?RP_COMP_NAME:'📋 Recordes Pessoais Iniciais')+' '+cs;
+    var comp=(D.competicoes||[]).find(function(c){return c.isRPImport&&c.nome===nomeComp;})||(D.competicoes||[]).find(function(c){return c.isRPImport;});
+    if(!comp){comp={id:gid(),nome:nomeComp,data:cs.split('/')[0]+'-09-01',dataFim:'',nivel:'',local:'Importação automática',notas:'',inscricoes:[],resultados:[],isRPImport:true};D.competicoes.push(comp);}
+    comp.resultados=comp.resultados||[];
+    porNad.forEach(function(o){if(!o.rps.length)return;
+      comp.resultados=comp.resultados.filter(function(r){return r.nadadorId!==o.n.id;});
+      o.rps.forEach(function(r){comp.resultados.push({nadador:o.n.nome,nadadorId:o.n.id,escalao:o.n.escalao||'',prova:r.prova,piscina:r.piscina,tipo:'',dia:1,tempo:r.tempo,tempoInscricao:'',isRP:true,pctRP:'',lugar:'',fase:''});tempos++;});});
+    comp.notas=(comp.notas?comp.notas+' ':'')+'Atualizado com o PDF de Recordes Pessoais em '+new Date().toLocaleDateString('pt-PT')+' ('+tempos+' tempos).';
+  }
+  save();closeM('mNdImp');ND_IMP=null;rNad();if(typeof rDash==='function')try{rDash();}catch(e){}
+  if(typeof rComp==='function')try{rComp();}catch(e){}
+  toast(alterados+' atualizado(s) · '+novos+' novo(s)'+(rp?' · '+tempos+' RPs':''),'success');
+}
+function ndImpLer(file){
+  gi('ndImpBody').innerHTML='<div class="cc-info">A ler «'+ndE(file.name)+'»…</div>';openM('mNdImp');
+  ndCarregarPdfJs(function(){
+    var fr=new FileReader();
+    fr.onload=function(){
+      pdfjsLib.getDocument({data:new Uint8Array(fr.result)}).promise.then(function(pdf){
+        var acc={lista:[],cur:null},seq=Promise.resolve();
+        for(var i=1;i<=pdf.numPages;i++)(function(n){seq=seq.then(function(){return pdf.getPage(n).then(function(pg){return pg.getTextContent().then(function(tc){
+          ndLerPagina(tc.items.map(function(it){return {str:it.str,x:it.transform[4],y:it.transform[5],w:it.width||0};}),acc);});});});})(i);
+        return seq.then(function(){return acc.lista;});
+      }).then(function(lista){
+        if(!lista.length){gi('ndImpBody').innerHTML='<div class="cc-info">Não encontrei nadadores neste PDF. É a exportação «Recordes pessoais» (Apelido, nome · Data nasc. · provas)?</div>';return;}
+        ndAssociar(lista);ndImpRender();
+      }).catch(function(e){console.error(e);gi('ndImpBody').innerHTML='<div class="cc-info">Erro a ler o PDF: '+ndE(e.message)+'</div>';});
+    };
+    fr.readAsArrayBuffer(file);
+  });
+}
+
+(function ndInit(){
+  function wire(){
+    // botões no cabeçalho do separador
+    var nf=gi('nadFile');var bar=nf&&nf.closest('div');
+    if(bar&&!gi('ndRpFile')){
+      bar.style.flexWrap='wrap';
+      var l=document.createElement('label');l.className='btn bs';l.style.cssText='cursor:pointer;background:#7c3aed;color:#fff';l.innerHTML='📥 Recordes Pessoais (PDF)<input type="file" accept=".pdf,application/pdf" id="ndRpFile" style="display:none">';
+      var p=document.createElement('button');p.className='btn bp bs';p.id='ndPDF';p.textContent='🖨️ PDF';
+      var w=document.createElement('button');w.className='btn bs';w.id='ndWord';w.style.cssText='background:#2563eb;color:#fff';w.textContent='📝 Word';
+      bar.insertBefore(w,bar.firstChild);bar.insertBefore(p,w);bar.insertBefore(l,p);
+      gi('ndRpFile').addEventListener('change',function(ev){var f=ev.target.files&&ev.target.files[0];if(f)ndImpLer(f);ev.target.value='';});
+      p.addEventListener('click',function(){try{ndExportPDF();}catch(e){console.error(e);toast('Erro PDF: '+e.message,'error');}});
+      w.addEventListener('click',function(){try{exportPdfFuncToWord(ndExportPDF,'foca_nadadores');}catch(e){console.error(e);toast('Erro Word: '+e.message,'error');}});
+    }
+    // categoria na ficha
+    var nn=gi('nNasc');
+    if(nn&&!gi('ndCatFicha')){var d=document.createElement('div');d.id='ndCatFicha';d.style.cssText='font-size:12px;color:var(--wd);margin:-6px 0 10px';
+      var row=nn.closest('.fr')||nn.parentNode;row.parentNode.insertBefore(d,row.nextSibling);
+      nn.addEventListener('input',ndCatFicha);nn.addEventListener('change',ndCatFicha);
+      var mo=gi('mN');if(mo)new MutationObserver(function(){if(mo.classList.contains('on'))ndCatFicha();}).observe(mo,{attributes:true,attributeFilter:['class']});}
+    // pré-visualização da importação
+    bon('ndImpCancel',function(){closeM('mNdImp');ND_IMP=null;});
+    bon('ndImpOk',function(){try{ndImpAplicar();}catch(e){console.error(e);toast('Erro: '+e.message,'error');}});
+    var m=gi('mNdImp');
+    m.addEventListener('change',function(ev){var t=ev.target,i=t.getAttribute('data-nd-ac');if(i!=null&&ND_IMP){var p=ND_IMP.lista[+i],v=t.value;
+        if(v.indexOf('assoc:')===0){p.acao='assoc';p.nadId=v.slice(6);}else{p.acao=v;p.nadId=null;}ndImpRender();return;}
+      if(t.id==='ndImpRP'&&ND_IMP){ND_IMP.rp=t.checked;}});
+    m.addEventListener('input',function(ev){var i=ev.target.getAttribute('data-nd-nome');if(i!=null&&ND_IMP)ND_IMP.lista[+i].nomeNovo=ev.target.value;});
+    try{rNad();}catch(e){console.warn(e);}
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wire);else wire();
+})();
+
+</script>
+<!-- ND-FIM -->
 </body>
 </html>
