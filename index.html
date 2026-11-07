@@ -1169,6 +1169,7 @@ html,body{max-width:100%;overflow-x:clip;}
   <div class="ni" id="nv-competicoes" data-go="competicoes">🏆 Competições</div>
   <div class="ni" id="nv-treinos" data-go="treinos">🏊 Planos de Treino</div>
   <div class="ni" id="nv-horarios" data-go="horarios">📅 Horários de Treino</div>
+  <div class="ni" id="nv-convocatorias" data-go="convocatorias">🚌 Convocatórias</div>
   <div class="ni" id="nv-planeamento" data-go="planeamento">📈 Planeamento</div>
   <div class="ni" id="nv-dinamica" data-go="dinamica">⚡ Dinâmica Semanal</div>
   <div class="ni" id="nv-registos" data-go="registos">📋 Registo de Treinos</div>
@@ -1775,7 +1776,6 @@ html,body{max-width:100%;overflow-x:clip;}
     <div class="vt" style="margin:14px 0">
       <button class="vt-btn vt-act" id="tabHabit">📅 Habitual</button>
       <button class="vt-btn" id="tabPont">🏖️ Pontuais</button>
-      <button class="vt-btn" id="tabConv">🚌 Convocatórias</button>
     </div>
     
     <!-- HABITUAL VIEW -->
@@ -1799,8 +1799,16 @@ html,body{max-width:100%;overflow-x:clip;}
       <div id="pontList"></div>
     </div>
     
+  </div>
+
+  <!-- CONVOCATÓRIAS PAGE -->
+  <div class="pg" id="pg-convocatorias">
+    <div class="sh">
+      <div><div class="st">Convocatórias</div><div class="su">Convocatórias de treino e de competição</div></div>
+    </div>
     <!-- CONVOCATÓRIAS VIEW -->
-    <div id="vConv" style="display:none">
+    <div id="vConv">
+      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;margin:0 0 10px">🚌 Convocatórias de treino</div>
       <div style="margin-bottom:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between">
         <div style="display:flex;gap:8px;align-items:center">
           <button class="btn bg bs" id="convPrev">← Anterior</button>
@@ -3460,7 +3468,7 @@ function go(page){
   gi('pg-'+page).classList.add('on');
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
   var ni=gi('nv-'+page);if(ni)ni.classList.add('on');
-  var T={dashboard:'Dashboard',competicoes:'Competições',treinos:'Planos de Treino',nadadores:'Nadadores',objetivos:'Objetivos',horarios:'Horários de Treino',planeamento:'Planeamento',dinamica:'Dinâmica Semanal',registos:'Registo de Treinos',analise:'Análise & Próxima Série',drills:'Biblioteca de Drills',ritmos:'Ritmos de Treino',distribpistas:'Distribuição Pista',planoacoes:'Plano de Ações',financeiro:'Financeiro',fisio:'Fisioterapia'};
+  var T={dashboard:'Dashboard',competicoes:'Competições',treinos:'Planos de Treino',nadadores:'Nadadores',objetivos:'Objetivos',horarios:'Horários de Treino',convocatorias:'Convocatórias',planeamento:'Planeamento',dinamica:'Dinâmica Semanal',registos:'Registo de Treinos',analise:'Análise & Próxima Série',drills:'Biblioteca de Drills',ritmos:'Ritmos de Treino',distribpistas:'Distribuição Pista',planoacoes:'Plano de Ações',financeiro:'Financeiro',fisio:'Fisioterapia'};
   gi('TT').textContent=T[page]||page;
   if(typeof szAtualizar==='function') setTimeout(szAtualizar,300);
   if(page==='dashboard')rDash();
@@ -3469,6 +3477,7 @@ function go(page){
   if(page==='nadadores')rNad();
   if(page==='objetivos')rObj();
   if(page==='horarios')rHorarios();
+  if(page==='convocatorias'&&typeof rConvocatorias==='function')rConvocatorias();
   if(page==='planeamento')rPlaneamento();
   if(page==='dinamica')rDinamica();
   if(page==='registos')rRegistos();
@@ -3586,9 +3595,8 @@ if(!window.__relCompDelegation){
       if(t.id === 'btnExpHorPDF'){ ev.preventDefault(); try{exportHorariosPDF();}catch(e){toast('Erro PDF: '+e.message,'error');} return; }
       if(t.id === 'btnExpHorWord'){ ev.preventDefault(); try{exportPdfFuncToWord(exportHorariosPDF,'foca_horarios');}catch(e){toast('Erro Word: '+e.message,'error');} return; }
       if(t.id === 'btnExpHorXLS'){ ev.preventDefault(); try{exportHorariosExcel();}catch(e){toast('Erro Excel: '+e.message,'error');} return; }
-      if(t.id === 'tabHabit'){ ev.preventDefault(); gi('tabHabit').classList.add('vt-act'); gi('tabPont').classList.remove('vt-act'); gi('tabConv').classList.remove('vt-act'); gi('vHabit').style.display=''; gi('vPont').style.display='none'; gi('vConv').style.display='none'; return; }
-      if(t.id === 'tabPont'){ ev.preventDefault(); gi('tabPont').classList.add('vt-act'); gi('tabHabit').classList.remove('vt-act'); gi('tabConv').classList.remove('vt-act'); gi('vPont').style.display=''; gi('vHabit').style.display='none'; gi('vConv').style.display='none'; return; }
-      if(t.id === 'tabConv'){ ev.preventDefault(); gi('tabConv').classList.add('vt-act'); gi('tabHabit').classList.remove('vt-act'); gi('tabPont').classList.remove('vt-act'); gi('vConv').style.display=''; gi('vHabit').style.display='none'; gi('vPont').style.display='none'; if(typeof rConvocatorias==='function') rConvocatorias(); return; }
+      if(t.id === 'tabHabit'){ ev.preventDefault(); gi('tabHabit').classList.add('vt-act'); gi('tabPont').classList.remove('vt-act'); gi('vHabit').style.display=''; gi('vPont').style.display='none'; return; }
+      if(t.id === 'tabPont'){ ev.preventDefault(); gi('tabPont').classList.add('vt-act'); gi('tabHabit').classList.remove('vt-act'); gi('vPont').style.display=''; gi('vHabit').style.display='none'; return; }
       
       // TREINOS TIPO buttons
       if(t.id === 'btnSaveTT'){ ev.preventDefault(); try{saveTreinoTipo();}catch(e){console.error(e);toast('Erro: '+e.message,'error');} return; }
@@ -29741,5 +29749,174 @@ function cpRenderSec(){
 
 </script>
 <!-- CP-FIM -->
+
+
+<!-- CI-INICIO -->
+<style>@media(max-width:600px){.ci-imp td:nth-child(2)::before{content:'Ano '}.ci-imp td:nth-child(3)::before{content:''}}</style>
+<div class="mo" id="mCiImp"><div class="md mw" style="width:1000px">
+  <div class="mt">📥 Inscrições da competição (PDF)</div>
+  <div id="ciBody"></div>
+  <div class="ma"><button class="btn bg" id="ciCancel">Cancelar</button><button class="btn bp" id="ciOk">✓ Confirmar e pôr na grelha</button></div>
+</div></div>
+<script>
+// ═══ CONVOCATÓRIAS: importar o PDF das inscrições ("Relatório por nadadores") para a grelha ═══
+// Provas individuais pelo nº da prova do programa; estafetas pela equipa ("Cnf Masc. 1" → 1 nas estafetas desse nadador).
+// Para cada nadador que está no PDF, a grelha passa a ser a inscrição oficial (substitui as marcas dele).
+var CI=null;
+var CI_EST={livres:'Livres',livre:'Livres',crol:'Livres',costas:'Costas',brucos:'Bruços',mariposa:'Mariposa',borboleta:'Mariposa',estilos:'Estilos'};
+function ciN(s){return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();}
+function ciLinhas(items){
+  var rows=[];items.filter(function(i){return i.str&&i.str.trim();}).forEach(function(it){var r=null;for(var i=0;i<rows.length;i++){if(Math.abs(rows[i].y-it.y)<=2){r=rows[i];break;}}if(!r){r={y:it.y,its:[]};rows.push(r);}r.its.push(it);});
+  rows.sort(function(a,b){return b.y-a.y;});
+  return rows.map(function(r){r.its.sort(function(a,b){return a.x-b.x;});return r.its.map(function(i){return i.str.trim();}).join(' ').replace(/\s+/g,' ');});
+}
+var CI_RE_EV=/(?:^|\s)(\d{1,3})\s+(4\s*x\s*)?(50|100|200|400|800|1500)\s+(livres?|crol|costas|bru[cç]os|mariposa|borboleta|estilos)\b/gi;
+function ciEventos(t){var out=[],m;CI_RE_EV.lastIndex=0;while((m=CI_RE_EV.exec(t))){out.push({num:+m[1],est:!!m[2],dist:+m[3],estilo:CI_EST[ciN(m[4])]||m[4]});}return out;}
+// linhas → {nadadores:[{nomePDF, yy, ind:[ev], est:[{ev,equipa,gen}]}], equipas:n}
+function ciInterpretar(L){
+  var por={},ord=[],eq=null,eqs={},cur=null;
+  function nad(nome,yy){var k=ciN(nome)+'|'+yy;if(!por[k]){por[k]={nomePDF:nome,yy:yy,ind:[],est:[]};ord.push(por[k]);}return por[k];}
+  L.forEach(function(t){
+    if(/^(foca-clube|campeonato|relat[oó]rio|pag\.|pág\.)/i.test(t)||/piscina (curta|longa)/i.test(t))return;
+    var mq=/cnf\.?\s+(masc|femin|misto|mist)\w*\.?\s*(\d+)\s*:(.*)$/i.exec(t);
+    if(mq){eq={gen:/^masc/i.test(mq[1])?'M':(/^fem/i.test(mq[1])?'F':'X'),num:+mq[2],ev:null};eqs[eq.gen+eq.num]=1;cur=null;t=mq[3];
+      var e0=ciEventos(t);if(e0.length)eq.ev=e0[0];return;}
+    var mn=/^\s*(\d{1,3})\s+([A-Za-zÀ-ÿ'][A-Za-zÀ-ÿ' .-]+?)\s+(\d{2})\s*:(.*)$/.exec(t);
+    if(mn&&!/^\s*[1-4]\s*:/.test(t)){eq=null;cur=nad(mn[2].trim(),mn[3]);ciEventos(mn[4]).forEach(function(e){if(!e.est)cur.ind.push(e);});return;}
+    if(eq){
+      var ev=ciEventos(t);if(ev.length&&ev[0].est){eq.ev=ev[0];return;}
+      var re=/([1-4])\s*:\s*([A-Za-zÀ-ÿ'][A-Za-zÀ-ÿ' .-]+?)\s+(\d{2})\s+(?:NT|\d)/g,m;
+      while((m=re.exec(t))){if(!eq.ev)continue;var n=nad(m[2].trim(),m[3]);n.est.push({ev:eq.ev,equipa:eq.num,gen:eq.gen});if(eq.gen!=='X')n.sexoEq=eq.gen;}
+      return;
+    }
+    if(cur){ciEventos(t).forEach(function(e){if(!e.est)cur.ind.push(e);});}
+  });
+  return {nadadores:ord,equipas:Object.keys(eqs).length};
+}
+// associação ao nadador da FOCA (nome "Apelido Nomes" + ano com 2 dígitos)
+function ciScore(p,n){
+  var tp=ciN(p.nomePDF).split(/\s+/),tn=ciN(n.nome).split(/\s+/).filter(function(w){return w.length>1;});
+  var com=tn.filter(function(w){return tp.indexOf(w)>=0;}).length;if(!com)return 0;
+  var apel=tn[tn.length-1]===tp[0]?3:0,todos=com===tn.length?2:0,ano=(n.nasc||'').slice(2,4),dn=ano&&ano===p.yy;
+  if(dn)return 20+com+apel+todos;
+  if(!ano&&(com>=2||apel))return 8+com+apel+todos;
+  if(ano&&com>=2&&apel)return 4+com+apel+todos;
+  return 0;
+}
+function ciProvaDe(e,sexo){
+  // 1) pelo nº da prova do programa; 2) pela prova (distância/estilo/estafeta) e género
+  var hit=null;
+  CC.sessoes.some(function(s){return s.provas.some(function(p){if(p.num===e.num&&p.dist===e.dist&&p.estilo===e.estilo&&!!p.est===e.est){hit={s:s,p:p};return true;}});});
+  if(!hit)CC.sessoes.some(function(s){return s.provas.some(function(p){if(p.dist===e.dist&&p.estilo===e.estilo&&!!p.est===e.est&&(!p.gen||!sexo||p.gen===sexo||p.gen==='X')){hit={s:s,p:p};return true;}});});
+  if(!hit)return null;
+  return {key:hit.s.id+'~'+(e.est?'E':'I')+e.dist+e.estilo,s:hit.s};
+}
+function ciAssociar(R){
+  var nads=(D.nadadores||[]).filter(function(n){return !n.arquivado;}),pares=[];
+  R.nadadores.forEach(function(p,i){
+    p.acao='novo';p.nadId=null;p.nomeNovo=(typeof ndNomeProprio==='function'?ndNomeProprio(p.nomePDF):p.nomePDF);
+    nads.forEach(function(n){var sc=ciScore(p,n);if(sc>=8)pares.push({i:i,n:n,sc:sc});});
+  });
+  pares.sort(function(a,b){return b.sc-a.sc;});var us={},fe={};
+  pares.forEach(function(q){if(us[q.n.id]||fe[q.i])return;var p=R.nadadores[q.i];p.acao='assoc';p.nadId=q.n.id;us[q.n.id]=1;fe[q.i]=1;});
+  CI=R;
+}
+function ciSexo(p){
+  if(p.sexoEq)return p.sexoEq;
+  var n=p.nadId&&ccNad(p.nadId);if(n&&n.sexo)return n.sexo;
+  var at=p.nadId&&CC.atletas.find(function(a){return a.id===p.nadId;});if(at&&at.sexo)return at.sexo;
+  // pelo género das provas individuais no programa
+  var g='';p.ind.some(function(e){var r=null;CC.sessoes.some(function(s){return s.provas.some(function(x){if(x.num===e.num&&x.gen&&x.gen!=='X'){r=x.gen;return true;}});});if(r){g=r;return true;}});
+  if(g)return g;return n?ccSexoPalpite(n):(typeof ccSexoPalpite==='function'?ccSexoPalpite({nome:p.nomeNovo}):'');
+}
+function ciRender(){
+  var nads=(D.nadadores||[]).filter(function(n){return !n.arquivado;}).sort(function(a,b){return a.nome.localeCompare(b.nome);});
+  var L=CI.nadadores,nA=L.filter(function(p){return p.acao==='assoc';}).length,nN=L.filter(function(p){return p.acao==='novo';}).length;
+  var nInd=0,nEst=0,falha=[];
+  var h='<div class="cc-info">Li <b>'+L.length+'</b> nadadores e <b>'+CI.equipas+'</b> equipas de estafetas. <b>✅ '+nA+'</b> associados a nadadores da FOCA, <b>➕ '+nN+'</b> novos. '
+    +'Para cada nadador do PDF, as cruzes na grelha passam a ser <b>exatamente</b> a inscrição oficial; quem não está no PDF fica como está. Nas estafetas fica o número da equipa.</div>'
+    +'<div style="overflow-x:auto"><table class="nd-imp ci-imp"><thead><tr><th>No PDF</th><th>Ano</th><th>Provas</th><th>Nadador na FOCA</th></tr></thead><tbody>';
+  L.forEach(function(p,i){
+    var sx=ciSexo(p),ok=[],ko=[];
+    p.ind.forEach(function(e){var r=ciProvaDe(e,sx);(r?ok:ko).push(e.num+' · '+e.dist+' '+e.estilo);});
+    p.est.forEach(function(x){var r=ciProvaDe(x.ev,sx);(r?ok:ko).push(x.ev.num+' · 4×'+x.ev.dist+' '+x.ev.estilo+' (eq. '+({M:'Masc.',F:'Femin.',X:'Misto'}[x.gen])+' '+x.equipa+')');});
+    if(p.acao!=='ign'){nInd+=p.ind.length;nEst+=p.est.length;ko.forEach(function(k){falha.push(p.nomePDF+': '+k);});}
+    h+='<tr class="nd-'+p.acao+'"><td><b>'+ccE(p.nomePDF)+'</b></td><td>'+ccE(p.yy)+'</td><td style="font-size:12px">'+p.ind.length+' ind. · '+p.est.length+' est.'
+      +(ko.length?'<br><span style="color:#f5c842">⚠️ '+ko.length+' sem correspondência</span>':'')+'</td><td>'
+      +'<select class="fse" data-ci-ac="'+i+'" style="min-width:200px"><option value="assoc:" disabled'+(p.acao==='assoc'?' selected':'')+'>✅ Associar a…</option>'
+      +nads.map(function(x){return '<option value="assoc:'+x.id+'"'+(p.acao==='assoc'&&p.nadId===x.id?' selected':'')+'>✅ '+ccE(x.nome)+(x.nasc?' ('+x.nasc.slice(0,4)+')':'')+'</option>';}).join('')
+      +'<option value="novo"'+(p.acao==='novo'?' selected':'')+'>➕ Criar nadador(a)</option><option value="ign"'+(p.acao==='ign'?' selected':'')+'>⚪ Ignorar</option></select>'
+      +(p.acao==='novo'?'<input class="fi" data-ci-nome="'+i+'" value="'+ccE(p.nomeNovo)+'" style="margin-top:4px">':'')+'</td></tr>';
+  });
+  h+='</tbody></table></div>';
+  if(falha.length)h+='<div class="cc-info" style="border-left-color:#f5c842">⚠️ Estas provas não existem nas sessões desta convocatória e ficam de fora: '+falha.map(ccE).join('; ')+'. Confirma se carregaste o regulamento certo.</div>';
+  h+='<div style="font-size:12px;color:var(--wd)">Total: '+nInd+' inscrições individuais e '+nEst+' presenças em estafetas.</div>';
+  gi('ciBody').innerHTML=h;
+}
+function ciAplicar(){
+  var novos=0,n1=0,n2=0,sem=0;
+  CI.nadadores.forEach(function(p){
+    if(p.acao==='ign')return;
+    var sx=ciSexo(p),id=p.nadId;
+    if(p.acao==='novo'){var nn={id:gid(),nome:(p.nomeNovo||p.nomePDF).trim(),nasc:'',escalao:'Absolutos',grupo:'',especialidade:'',estilo:'Crol',prova:'',contacto:'',notas:'Criado a partir das inscrições de «'+(CC.nome||'')+'»',sexo:sx};
+      D.nadadores.push(nn);id=nn.id;novos++;}
+    var n=ccNad(id);if(n&&!n.sexo&&sx)n.sexo=sx;
+    var at=CC.atletas.find(function(a){return a.id===id;});if(!at){CC.atletas.push({id:id,sexo:sx||ccSexoPalpite(n)});}else if(sx)at.sexo=sx;
+    Object.keys(CC.marcas).forEach(function(k){if(k.indexOf(id+'|')===0)delete CC.marcas[k];});
+    p.ind.forEach(function(e){var r=ciProvaDe(e,sx);if(r){CC.marcas[id+'|'+r.key]='X';n1++;}else sem++;});
+    p.est.forEach(function(x){var r=ciProvaDe(x.ev,sx);if(r){CC.marcas[id+'|'+r.key]=String(Math.min(4,Math.max(1,x.equipa)));n2++;}else sem++;});
+  });
+  closeM('mCiImp');CI=null;CC_SUJO=true;
+  if(CC.nome){ccGuardar();}else{save();ccRender();}
+  ccRender();
+  toast(n1+' provas individuais · '+n2+' estafetas'+(novos?' · '+novos+' nadador(es) criado(s)':'')+(sem?' · '+sem+' fora':''),'success');
+}
+function ciLer(file){
+  if(!CC)return;
+  if(!CC.sessoes.length){toast('Carrega primeiro o regulamento (secção 1) para a convocatória ter as provas','error');return;}
+  gi('ciBody').innerHTML='<div class="cc-info">A ler «'+ccE(file.name)+'»…</div>';openM('mCiImp');
+  ccCarregarPdfJs(function(){
+    var fr=new FileReader();
+    fr.onload=function(){
+      pdfjsLib.getDocument({data:new Uint8Array(fr.result)}).promise.then(function(pdf){
+        var L=[],seq=Promise.resolve();
+        for(var i=1;i<=pdf.numPages;i++)(function(n){seq=seq.then(function(){return pdf.getPage(n).then(function(pg){return pg.getTextContent().then(function(tc){
+          L=L.concat(ciLinhas(tc.items.map(function(it){return {str:it.str,x:it.transform[4],y:it.transform[5],w:it.width||0};})));});});});})(i);
+        return seq.then(function(){return L;});
+      }).then(function(L){
+        var R=ciInterpretar(L);
+        if(!R.nadadores.length){gi('ciBody').innerHTML='<div class="cc-info">Não encontrei inscrições neste PDF. É o «Relatório por nadadores» das inscrições?</div>';return;}
+        ciAssociar(R);ciRender();
+      }).catch(function(e){console.error(e);gi('ciBody').innerHTML='<div class="cc-info">Erro a ler o PDF: '+ccE(e.message)+'</div>';});
+    };
+    fr.readAsArrayBuffer(file);
+  });
+}
+function ciBotao(){
+  var b=gi('ccBody');if(!b||!CC||gi('ciBtnWrap'))return;
+  var alvo=null;b.querySelectorAll('.cc-sec').forEach(function(s){var t=s.querySelector('.cc-h');if(t&&/^4\./.test(t.textContent.trim()))alvo=s;});
+  if(!alvo)return;
+  var d=document.createElement('div');d.id='ciBtnWrap';d.style.cssText='margin:-2px 0 10px';
+  d.innerHTML='<label class="btn bs" style="cursor:pointer;background:#7c3aed;color:#fff">📥 Inscrições (PDF)<input type="file" accept=".pdf,application/pdf" id="ciFile" style="display:none"></label> <span style="font-size:12px;color:var(--wd)">«Relatório por nadadores» das inscrições: põe as provas e as estafetas de cada nadador na grelha.</span>';
+  var h=alvo.querySelector('.cc-h');h.parentNode.insertBefore(d,h.nextSibling);
+}
+(function ciInit(){
+  function wire(){
+    if(typeof ccRender!=='function'||ccRender.__ci)return;
+    var o=ccRender;ccRender=function(){var r=o.apply(this,arguments);try{ciBotao();}catch(e){console.warn(e);}return r;};ccRender.__ci=1;
+    var m=gi('mCC');
+    m.addEventListener('change',function(ev){if(ev.target.id==='ciFile'){var f=ev.target.files&&ev.target.files[0];if(f)ciLer(f);ev.target.value='';}});
+    var mi=gi('mCiImp');
+    bon('ciCancel',function(){closeM('mCiImp');CI=null;});
+    bon('ciOk',function(){try{ciAplicar();}catch(e){console.error(e);toast('Erro: '+e.message,'error');}});
+    mi.addEventListener('change',function(ev){var t=ev.target,i=t.getAttribute('data-ci-ac');if(i!=null&&CI){var p=CI.nadadores[+i],v=t.value;
+      if(v.indexOf('assoc:')===0){p.acao='assoc';p.nadId=v.slice(6);}else{p.acao=v;p.nadId=null;}ciRender();}});
+    mi.addEventListener('input',function(ev){var i=ev.target.getAttribute('data-ci-nome');if(i!=null&&CI)CI.nadadores[+i].nomeNovo=ev.target.value;});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wire);else wire();
+})();
+
+</script>
+<!-- CI-FIM -->
 </body>
 </html>
