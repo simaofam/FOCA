@@ -29918,5 +29918,183 @@ function ciBotao(){
 
 </script>
 <!-- CI-FIM -->
+<!-- WA-INICIO -->
+<script>
+// ═══ 💬 WHATSAPP ao lado dos botões PDF ═══
+// Reaproveita a função PDF de cada separador: captura o HTML que ela escreve (como o botão Word),
+// e envia (1) o PDF como ficheiro pelo menu Partilhar do telemóvel, ou (2) um texto resumido via wa.me.
+var WA_ALVOS=[
+  // id do botão PDF · função · nome do ficheiro · opções
+  {id:'vp-print',fn:'printReport',nome:'plano_treino',rot:'Plano de treino',txt:1},
+  {id:'btnExpHorPDF',fn:'exportHorariosPDF',nome:'horarios',rot:'Horário habitual',txt:1},
+  {id:'btnVPPDF',fn:'exportPontualPDF',nome:'horario_pontual',rot:'Horário pontual',txt:1},
+  {id:'btnVConvPDF',fn:'exportConvocatoriaPDF',nome:'convocatoria_treino',rot:'Convocatória de treino',txt:1},
+  {id:'btnDinPDF',fn:'exportDinPDF',nome:'dinamica_semanal',rot:'Dinâmica semanal',txt:1},
+  {id:'btnRegPDF',fn:'exportRegPDF',nome:'registos_treino',rot:'Registos de treino',txt:1},
+  {id:'btnRegExportSelPDF',fn:'exportRegPDF',nome:'registos_treino',rot:'Registos de treino',txt:1},
+  {id:'btnRgPDF',fn:'rgExportPDF',nome:'registo_treino',rot:'Registo de treino',txt:1},
+  {id:'btnFisioPDF',fn:'exportFisioPDF',nome:'fisioterapia',rot:'Fisioterapia',txt:0},
+  {id:'btnRitmosPDF',fn:'ritmosExportPDF',nome:'ritmos_treino',rot:'Ritmos de treino',txt:1},
+  {id:'btnMultiPDF',fn:'ritmosMultiPDF',nome:'ritmos_por_nadador',rot:'Ritmos por nadador',txt:1},
+  {id:'btnReXPDF',fn:'reExportPDF',nome:'ritmos_equipa',rot:'Ritmos da equipa',txt:1},
+  {id:'btnPfXPDF',fn:'pfExportPDF',nome:'perfil_prova',rot:'Perfil de prova',txt:1},
+  {id:'btnPAPDF',fn:'exportPlanoAcoesPDF',nome:'plano_acoes',rot:'Plano de ações',txt:0},
+  {id:'btnFinPDF',fn:'exportFinanceiroPDF',nome:'financeiro',rot:'Financeiro',txt:0}
+];
+var WA_H2P=['https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js','https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js'];
+var WA={alvo:null,html:'',blob:null,ficheiro:''};
+
+// ── captura o HTML que a função PDF escreveria na janela de impressão ──
+function waCapturarSync(fnName){
+  var fn=window[fnName];if(typeof fn!=='function')throw new Error('Exportação indisponível');
+  var orig=window.open,docs=[];
+  window.open=function(){var d={_b:'',open:function(){},write:function(s){this._b+=s;},writeln:function(s){this._b+=s+'\n';},close:function(){}};docs.push(d);
+    return {closed:false,focus:function(){},close:function(){},print:function(){},document:d,addEventListener:function(){},location:{href:''}};};
+  var ot=window.toast,avisou=false;window.toast=function(){avisou=true;return ot.apply(this,arguments);};
+  try{fn();}finally{window.open=orig;window.toast=ot;}
+  var h=docs.map(function(d){return d._b;}).filter(Boolean).pop()||'';
+  if(!h){var e=new Error(avisou?'':'Nada para exportar: abre ou seleciona primeiro o que queres enviar');e.silencio=avisou;throw e;}
+  return h;
+}
+function waSemScripts(h){return h.replace(/<script[\s\S]*?<\/script>/gi,'');}
+
+// ── HTML → texto para WhatsApp ──
+function waTexto(html){
+  var doc=new DOMParser().parseFromString(waSemScripts(html),'text/html');
+  doc.querySelectorAll('style,script,img,svg,button,canvas,noscript').forEach(function(e){e.remove();});
+  var out=[];
+  function limpa(t){return String(t||'').replace(/\bundefined\b|\bnull\b/g,'').replace(/\s+/g,' ').replace(/\s+([,.;:])/g,'$1').trim();}
+  function tx(el){if(el.nodeType===3)return el.textContent;if(el.nodeType!==1)return '';var p=[];[].forEach.call(el.childNodes,function(c){var t=tx(c);if(t)p.push(t);});return p.join(c0(el));}
+  function c0(el){return /^(TD|TH|TR|P|DIV|SPAN|B|STRONG|SMALL|EM|I|LABEL|A)$/.test(el.tagName)?' ':'';}
+  function linha(t){t=limpa(t);if(t)out.push(t);}
+  function bloco(el){
+    var tag=el.tagName;
+    if(/^H[1-4]$/.test(tag)||/\b(hdr-t|tt|sec-t|title|titulo)\b/.test(el.className||'')){var t=limpa(tx(el));if(t){out.push('');out.push('*'+t+'*');}return;}
+    if(tag==='TABLE'){out.push('');el.querySelectorAll('tr').forEach(function(tr){
+      var cel=[].slice.call(tr.children).map(function(c){return limpa(tx(c));}).filter(Boolean);
+      if(!cel.length)return;var head=tr.querySelector('th')&&!tr.querySelector('td');var t=cel.join(' · ');out.push(head?'_'+t+'_':'• '+t);});return;}
+    if(tag==='UL'||tag==='OL'){el.querySelectorAll(':scope>li').forEach(function(li){linha('• '+tx(li));});return;}
+    if(tag==='BR'){return;}
+    var temBloco=[].some.call(el.children,function(c){return /^(DIV|P|TABLE|UL|OL|H[1-6]|SECTION|ARTICLE|TR|LI)$/.test(c.tagName);});
+    if(!temBloco){linha(tx(el));return;}
+    [].forEach.call(el.childNodes,function(n){if(n.nodeType===3){linha(n.textContent);}else if(n.nodeType===1)bloco(n);});
+  }
+  bloco(doc.body);
+  var t=out.join('\n').replace(/\n{3,}/g,'\n\n').trim();
+  // tira a 1.ª linha se for só o nome do clube repetido
+  if(t.length>3800)t=t.slice(0,3800).replace(/\n[^\n]*$/,'')+'\n… (texto cortado — o documento completo vai no PDF)';
+  return t;
+}
+
+// ── HTML → ficheiro PDF (html2pdf num iframe invisível, mesma origem) ──
+function waGerarPdf(html,nome,cb,erro){
+  var land=/landscape/i.test(html);
+  var ifr=document.createElement('iframe');
+  ifr.style.cssText='position:fixed;left:-10000px;top:0;width:'+(land?1123:794)+'px;height:1200px;border:0;opacity:0;pointer-events:none';
+  document.body.appendChild(ifr);
+  var limpo=waSemScripts(html).replace(/@page\s*\{[^}]*\}/gi,'').replace(/@media\s+print\s*\{([^{}]*\{[^}]*\})*[^}]*\}/gi,'');
+  var d=ifr.contentDocument;d.open();d.write(limpo);d.close();
+  var w=ifr.contentWindow,i=0;
+  function falha(m){try{ifr.remove();}catch(e){}erro(m);}
+  function corre(){
+    try{
+      var st=d.createElement('style');st.textContent='html,body{background:#fff!important;margin:0!important}body{padding:0 4mm!important}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}';d.head.appendChild(st);
+      var op={margin:[8,6],filename:nome+'.pdf',image:{type:'jpeg',quality:0.82},
+        html2canvas:{scale:1.6,useCORS:true,backgroundColor:'#ffffff',windowWidth:land?1123:794},
+        jsPDF:{unit:'mm',format:'a4',orientation:land?'landscape':'portrait'},pagebreak:{mode:['css','legacy'],avoid:['tr','.cd','.card','.kk-box','.ccd-tb tr']}};
+      // opções criadas no contexto do iframe (a biblioteca usa instanceof Array)
+      w.html2pdf().set(w.JSON.parse(JSON.stringify(op))).from(d.body).outputPdf('blob').then(function(b){ifr.remove();cb(b);}).catch(function(e){falha(e&&e.message||String(e));});
+    }catch(e){falha(e.message);}
+  }
+  function carrega(){
+    if(i>=WA_H2P.length){falha('não consegui carregar o gerador de PDF (sem internet?)');return;}
+    var s=d.createElement('script');s.src=WA_H2P[i++];s.onload=function(){setTimeout(corre,150);};s.onerror=carrega;d.head.appendChild(s);
+  }
+  if(d.readyState==='complete')carrega();else ifr.onload=carrega;
+}
+
+// ── janela ──
+function waTituloDe(html){
+  var rot=(WA.alvo&&WA.alvo.rot)||'',det='';
+  try{var d=new DOMParser().parseFromString(waSemScripts(html),'text/html');
+    var hs=d.querySelectorAll('h1,h2,h3,.vp-title,.st');for(var i=0;i<hs.length;i++){var t=hs[i].textContent.replace(/\s+/g,' ').trim();if(t&&!/clube de nata|^foca\b/i.test(t)&&t.length<90){det=t;break;}}}catch(e){}
+  if(!det){var m=/<title>([^<]*)<\/title>/i.exec(html);det=m?m[1].replace(/^FOCA\s*[—-]\s*/,'').trim():'';if(/^imprimir$/i.test(det))det='';}
+  return 'FOCA · '+[rot,det&&det.toLowerCase()!==rot.toLowerCase()?det:''].filter(Boolean).join(' · ');
+}
+function waAbrir(alvo){
+  var html;try{html=waCapturarSync(alvo.fn);}catch(e){if(!e.silencio)toast(e.message,'error');return;}
+  WA={alvo:alvo,html:html,blob:null,ficheiro:'foca_'+alvo.nome+'_'+(mpHojeISO?mpHojeISO():new Date().toISOString().slice(0,10))};
+  var tit=waTituloDe(html);
+  gi('waT').textContent='💬 Enviar por WhatsApp';
+  gi('waBody').innerHTML='<div style="font-size:13px;color:var(--wd);margin-bottom:12px">'+ccE(tit)+'</div>'
+    +'<button class="btn bp wa-op" id="waPdf">📄 Enviar o PDF<small>o mesmo documento do botão PDF, como ficheiro</small></button>'
+    +(alvo.txt?'<button class="btn bg wa-op" id="waTxt">💬 Enviar como texto<small>abre o WhatsApp com a mensagem já escrita</small></button>':'')
+    +'<div id="waEst" style="margin-top:10px;font-size:13px"></div>';
+  openM('mWa');
+}
+function waPdf(){
+  var est=gi('waEst'),b=gi('waPdf');b.disabled=true;est.innerHTML='⏳ A preparar o PDF…';
+  waGerarPdf(WA.html,WA.ficheiro,function(blob){
+    WA.blob=blob;b.disabled=false;
+    est.innerHTML='✅ PDF pronto ('+Math.max(1,Math.round(blob.size/1024))+' KB).<button class="btn wa-go" id="waShare">📤 Partilhar no WhatsApp</button>';
+  },function(m){b.disabled=false;est.innerHTML='<span style="color:var(--r)">Não foi possível criar o PDF: '+ccE(m)+'</span>';});
+}
+function waShare(){
+  if(!WA.blob)return;
+  var file=null;try{file=new File([WA.blob],WA.ficheiro+'.pdf',{type:'application/pdf'});}catch(e){}
+  var tit=waTituloDe(WA.html);
+  if(file&&navigator.canShare&&navigator.canShare({files:[file]})){
+    navigator.share({files:[file],title:tit,text:tit}).then(function(){closeM('mWa');toast('Partilhado','success');}).catch(function(e){if(e&&e.name!=='AbortError')toast('Não foi possível partilhar: '+e.message,'error');});
+    return;
+  }
+  // sem partilha de ficheiros (ex.: PC): descarrega o PDF e abre o WhatsApp com uma mensagem
+  var a=document.createElement('a');a.href=URL.createObjectURL(WA.blob);a.download=WA.ficheiro+'.pdf';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},2000);
+  window.open('https://wa.me/?text='+encodeURIComponent(tit+' — segue o PDF em anexo.'),'_blank');
+  toast('PDF descarregado: anexa-o na conversa do WhatsApp','info');
+}
+function waTxt(){
+  var t=waTexto(WA.html);if(!t){toast('Sem texto para enviar','error');return;}
+  window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank');closeM('mWa');
+}
+
+// ── botões ao lado dos PDF (também nos que só aparecem ao abrir uma janela) ──
+function waInjeta(){
+  WA_ALVOS.forEach(function(a){
+    var b=gi(a.id);if(!b||b.getAttribute('data-wa-ok'))return;
+    b.setAttribute('data-wa-ok','1');
+    var w=document.createElement('button');
+    w.className=b.classList.contains('vp-btn')?'vp-btn':'btn bs';
+    w.setAttribute('data-wa',a.id);w.type='button';
+    w.style.cssText='background:#25d366;color:#06301a;font-weight:700';
+    w.textContent='💬 WhatsApp';
+    var ref=b,nx=b.nextElementSibling;
+    if(nx&&(/word/i.test(nx.id||'')||/Word/.test(nx.textContent||'')))ref=nx;
+    ref.parentNode.insertBefore(w,ref.nextSibling);
+  });
+}
+(function waInit(){
+  function wire(){
+    if(!gi('mWa')){var m=document.createElement('div');m.className='mo';m.id='mWa';
+      m.innerHTML='<div class="md mw" style="width:440px"><div class="mt" id="waT">💬 Enviar por WhatsApp</div><div id="waBody"></div><div class="ma"><button class="btn bg" id="waFechar">Fechar</button></div></div>';
+      document.body.appendChild(m);
+      var st=document.createElement('style');st.textContent='.wa-op{display:flex;flex-direction:column;align-items:flex-start;width:100%;margin-bottom:8px;padding:12px 14px;text-align:left}.wa-op small{font-weight:400;opacity:.75;font-size:11px;margin-top:2px}'
+        +'.wa-go{display:block;width:100%;margin-top:10px;background:#25d366;color:#06301a;font-weight:700;padding:12px}';document.head.appendChild(st);}
+    document.addEventListener('click',function(ev){
+      var t=ev.target.closest&&ev.target.closest('[data-wa],#waPdf,#waTxt,#waShare,#waFechar');if(!t)return;
+      if(t.id==='waFechar'){closeM('mWa');return;}
+      if(t.id==='waPdf'){waPdf();return;}
+      if(t.id==='waTxt'){waTxt();return;}
+      if(t.id==='waShare'){waShare();return;}
+      var id=t.getAttribute('data-wa'),a=WA_ALVOS.find(function(x){return x.id===id;});
+      if(a){ev.preventDefault();ev.stopPropagation();waAbrir(a);}
+    },true);
+    waInjeta();
+    var pend=false;new MutationObserver(function(){if(pend)return;pend=true;requestAnimationFrame(function(){pend=false;waInjeta();});}).observe(document.body,{childList:true,subtree:true});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wire);else wire();
+})();
+
+</script>
+<!-- WA-FIM -->
 </body>
 </html>
