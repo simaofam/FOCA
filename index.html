@@ -30319,5 +30319,141 @@ function fmExportPDF(){
 
 </script>
 <!-- FM-FIM -->
+<!-- AV-INICIO -->
+<script>
+// ═══ 📢 AVISOS À EQUIPA — separador próprio + cartão no Dashboard + envio por WhatsApp ═══
+// D.avisos = [{id, titulo, texto, dest:{todos:bool, equipas:[key], nadIds:[id]}, ini:'AAAA-MM-DD', fim:'AAAA-MM-DD'|'', fixo:bool, criado, alterado}]
+var AV_ED=null,AV_ARQ=false;
+function avE(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function avLista(){if(!D.avisos)D.avisos=[];return D.avisos;}
+function avHoje(){return (typeof mpHojeISO==='function')?mpHojeISO():new Date().toISOString().slice(0,10);}
+function avEstado(a,h){h=h||avHoje();if(a.ini&&a.ini>h)return 'prog';if(a.fim&&a.fim<h)return 'arq';return 'ativo';}
+function avEquipas(){var o=[];var sel=gi('ESC');if(sel)[].forEach.call(sel.querySelectorAll('option'),function(op){if(!op.value||op.disabled||op.value==='todos'||op.value.indexOf('ind:')===0)return;o.push({k:op.value,l:op.textContent.replace(/\s*\(\d+\)\s*$/,'')});});return o;}
+function avEqLbl(k){var e=avEquipas().find(function(x){return x.k===k;});if(e)return e.l.replace(/^\S+\s/,'');return (typeof getSessionEquipaLabel==='function')?getSessionEquipaLabel({equipa:k}):k;}
+function avDestLbl(a){var d=a.dest||{};if(d.todos)return 'Todos';var p=(d.equipas||[]).map(avEqLbl);
+  var n=(d.nadIds||[]).map(function(id){var x=(D.nadadores||[]).find(function(y){return y.id===id;});return x?x.nome:'';}).filter(Boolean);
+  if(n.length>3)p.push(n.length+' nadadores');else p=p.concat(n);return p.join(', ')||'—';}
+function avDataLbl(iso){if(!iso)return '';var p=iso.split('-');return (+p[2])+' '+MS[+p[1]-1].toLowerCase();}
+function avPeriodo(a){if(a.ini&&a.fim)return avDataLbl(a.ini)+' a '+avDataLbl(a.fim);if(a.fim)return 'até '+avDataLbl(a.fim);if(a.ini)return 'a partir de '+avDataLbl(a.ini);return 'sem data de fim';}
+// relevante para a equipa selecionada na barra lateral
+function avRelevante(a){var d=a.dest||{};if(d.todos||!currentEscalao||currentEscalao==='todos')return true;
+  if((d.equipas||[]).indexOf(currentEscalao)>=0)return true;
+  if((d.nadIds||[]).length&&typeof filterNad==='function'){var ids=filterNad(D.nadadores||[]).map(function(n){return n.id;});return d.nadIds.some(function(id){return ids.indexOf(id)>=0;});}
+  return false;}
+function avOrd(L){return L.slice().sort(function(a,b){return (b.fixo?1:0)-(a.fixo?1:0)||(b.ini||b.criado||'').localeCompare(a.ini||a.criado||'');});}
+function avTextoWA(a){var L=['📢 *'+a.titulo+'*'];if(a.texto&&a.texto.trim()){L.push('');L.push(a.texto.trim());}
+  var dl=avDestLbl(a),rod=[];if(dl&&dl!=='Todos'&&dl!=='—')rod.push('Para: '+dl);if(a.fim)rod.push('Válido até '+avDataLbl(a.fim));
+  if(rod.length){L.push('');L.push('_'+rod.join(' · ')+'_');}return L.join('\n');}
+function avWA(id){var a=avLista().find(function(x){return x.id===id;});if(!a)return;window.open('https://wa.me/?text='+encodeURIComponent(avTextoWA(a)),'_blank');}
+function avCartao(a,mini){
+  var est=avEstado(a),bd={ativo:'',prog:'<span class="badge by">programado · '+avDataLbl(a.ini)+'</span>',arq:'<span class="badge bq">arquivado</span>'}[est];
+  var txt=avE(a.texto||'').replace(/\n/g,'<br>');
+  if(mini)return '<div class="av-c'+(a.fixo?' fx':'')+'" data-av-go="1"><div class="av-t">'+(a.fixo?'📌 ':'')+avE(a.titulo)+'</div><div class="av-x">'+txt+'</div><div class="av-m">'+avE(avDestLbl(a))+' · '+avE(avPeriodo(a))+'</div></div>';
+  return '<div class="av-c'+(a.fixo?' fx':'')+(est==='arq'?' arq':'')+'"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap"><div class="av-t">'+(a.fixo?'📌 ':'')+avE(a.titulo)+' '+bd+'</div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn bs" data-av-wa="'+a.id+'" style="background:#25d366;color:#06301a;font-weight:700">💬 WhatsApp</button><button class="btn bg bs" data-av-ed="'+a.id+'">✏️</button><button class="btn bg bs" data-av-dup="'+a.id+'" title="Duplicar">⧉</button><button class="btn bd bs" data-av-del="'+a.id+'">🗑️</button></div></div>'
+    +'<div class="av-x">'+txt+'</div><div class="av-m">👥 '+avE(avDestLbl(a))+' · 📅 '+avE(avPeriodo(a))+'</div></div>';
+}
+function rAvisos(){
+  var box=gi('avBody');if(!box)return;var h=avHoje(),L=avOrd(avLista());
+  var at=L.filter(function(a){return avEstado(a,h)==='ativo';}),pr=L.filter(function(a){return avEstado(a,h)==='prog';}),ar=L.filter(function(a){return avEstado(a,h)==='arq';});
+  var s='';
+  s+='<div class="av-sec">Em vigor ('+at.length+')</div>'+(at.length?at.map(function(a){return avCartao(a);}).join(''):'<div class="av-vazio">Sem avisos em vigor. Carrega em <b>+ Novo aviso</b>.</div>');
+  if(pr.length)s+='<div class="av-sec">Programados ('+pr.length+')</div>'+pr.map(function(a){return avCartao(a);}).join('');
+  if(ar.length)s+='<div class="av-sec" style="cursor:pointer" data-av-arq="1">'+(AV_ARQ?'▾':'▸')+' Arquivo ('+ar.length+')</div>'+(AV_ARQ?ar.map(function(a){return avCartao(a);}).join(''):'');
+  box.innerHTML=s;
+}
+function avDash(){
+  var ref=gi('dshAniv')||gi('dshNextSession');if(!ref)return;
+  var box=gi('dshAvisos');if(!box){box=document.createElement('div');box.id='dshAvisos';ref.parentNode.insertBefore(box,ref);}
+  var L=avOrd(avLista().filter(function(a){return avEstado(a)==='ativo'&&avRelevante(a);}));
+  if(!L.length){box.innerHTML='';box.style.display='none';return;}
+  box.style.display='';
+  box.innerHTML='<div class="av-dash"><div class="av-dh">📢 Avisos <span>· '+L.length+'</span></div>'+L.slice(0,4).map(function(a){return avCartao(a,true);}).join('')+(L.length>4?'<div class="av-m" data-av-go="1" style="cursor:pointer">+ '+(L.length-4)+' avisos →</div>':'')+'</div>';
+}
+// ── editor ──
+function avAbrir(id,dup){
+  var a=id?avLista().find(function(x){return x.id===id;}):null;
+  AV_ED=a?JSON.parse(JSON.stringify(a)):{id:'',titulo:'',texto:'',dest:{todos:false,equipas:currentEscalao&&currentEscalao!=='todos'&&currentEscalao.indexOf('ind:')<0?[currentEscalao]:[],nadIds:[]},ini:avHoje(),fim:'',fixo:false};
+  if(dup){AV_ED.id='';AV_ED.titulo+=' (cópia)';AV_ED.ini=avHoje();}
+  gi('avMT').textContent=AV_ED.id?'✏️ Editar aviso':'📢 Novo aviso';avRenderEd();openM('mAviso');setTimeout(function(){var t=gi('avTit');if(t&&!AV_ED.id)t.focus();},50);
+}
+function avRenderEd(){
+  var A=AV_ED,eqs=avEquipas(),d=A.dest;
+  var nads=(D.nadadores||[]).filter(function(n){return !n.arquivado;}).sort(function(a,b){return a.nome.localeCompare(b.nome);});
+  gi('avEdBody').innerHTML='<div class="fg"><label class="fl">Título *</label><input class="fi" id="avTit" maxlength="90" value="'+avE(A.titulo)+'" placeholder="ex.: Treino de amanhã na piscina B"></div>'
+    +'<div class="fg"><label class="fl">Texto</label><textarea class="fta" id="avTxt" rows="5" placeholder="ex.: Amanhã o treino é às 7h00 na piscina B. Tragam palas e barbatanas.">'+avE(A.texto)+'</textarea></div>'
+    +'<div class="fl" style="margin-bottom:4px">Para quem</div><div class="av-ch">'
+    +'<button type="button" class="cc-pill'+(d.todos?' on':'')+'" data-av-todos="1">👥 Todos</button>'
+    +eqs.map(function(e){return '<button type="button" class="cc-pill'+(!d.todos&&d.equipas.indexOf(e.k)>=0?' on':'')+'" data-av-eq="'+avE(e.k)+'"'+(d.todos?' disabled style="opacity:.45"':'')+'>'+avE(e.l)+'</button>';}).join('')+'</div>'
+    +'<details class="av-nd"'+((d.nadIds||[]).length?' open':'')+'><summary>Ou nadadores escolhidos ('+(d.nadIds||[]).length+')</summary><input class="fi" id="avNdQ" placeholder="Procurar…" style="margin:6px 0"><div class="av-nl">'
+    +nads.map(function(n){return '<label data-nm="'+avE((n.nome||'').toLowerCase())+'"><input type="checkbox" data-av-nd="'+n.id+'"'+((d.nadIds||[]).indexOf(n.id)>=0?' checked':'')+(d.todos?' disabled':'')+'> '+avE(n.nome)+' <small>'+avE(n.escalao||'')+'</small></label>';}).join('')+'</div></details>'
+    +'<div class="av-g"><div class="fg"><label class="fl">Mostrar a partir de</label><input class="fi" type="date" id="avIni" value="'+avE(A.ini||'')+'"></div><div class="fg"><label class="fl">Até (fica no arquivo depois)</label><input class="fi" type="date" id="avFim" value="'+avE(A.fim||'')+'"></div></div>'
+    +'<label style="display:flex;gap:6px;align-items:center;font-size:13px;margin:4px 0 10px"><input type="checkbox" id="avFixo"'+(A.fixo?' checked':'')+'> 📌 Fixo no topo</label>'
+    +'<div class="fl">Pré-visualização no WhatsApp</div><div class="av-prev" id="avPrev"></div>';
+  avPrev();
+}
+function avLerEd(){var A=AV_ED;A.titulo=(gi('avTit').value||'').trim();A.texto=gi('avTxt').value||'';A.ini=gi('avIni').value||'';A.fim=gi('avFim').value||'';A.fixo=gi('avFixo').checked;}
+function avPrev(){var p=gi('avPrev');if(!p)return;avLerEd();var t=avTextoWA(Object.assign({},AV_ED,{titulo:AV_ED.titulo||'(título)'}));
+  p.innerHTML=avE(t).replace(/\*([^*\n]+)\*/g,'<b>$1</b>').replace(/_([^_\n]+)_/g,'<i>$1</i>').replace(/\n/g,'<br>');}
+function avGuardar(env){
+  avLerEd();var A=AV_ED;
+  if(!A.titulo){toast('Escreve o título do aviso','error');return;}
+  if(!A.dest.todos&&!A.dest.equipas.length&&!A.dest.nadIds.length){toast('Escolhe para quem é o aviso','error');return;}
+  if(A.fim&&A.ini&&A.fim<A.ini){toast('A data de fim é anterior à de início','error');return;}
+  var L=avLista(),agora=new Date().toISOString();
+  if(!A.id){A.id=gid();A.criado=agora;L.push(A);}else{var i=L.findIndex(function(x){return x.id===A.id;});A.alterado=agora;if(i>=0)L[i]=A;else L.push(A);}
+  save();closeM('mAviso');var id=A.id;AV_ED=null;rAvisos();avDash();toast('Aviso guardado','success');
+  if(env)avWA(id);
+}
+function avApagar(id){var a=avLista().find(function(x){return x.id===id;});if(!a)return;if(!confirm('Apagar o aviso «'+a.titulo+'»?'))return;D.avisos=avLista().filter(function(x){return x.id!==id;});save();rAvisos();avDash();toast('Aviso apagado','success');}
+(function avInit(){
+  function wire(){
+    if(gi('pg-avisos'))return;
+    var ref=gi('pg-convocatorias')||gi('pg-horarios');
+    var pg=document.createElement('div');pg.className='pg';pg.id='pg-avisos';
+    pg.innerHTML='<div class="sh"><div><div class="st">📢 Avisos à equipa</div><div class="su">Avisos para os atletas · enviados por WhatsApp · os que estão em vigor aparecem no Dashboard</div></div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn bp" id="avNovo">+ Novo aviso</button></div></div><div id="avBody"></div>';
+    ref.parentNode.insertBefore(pg,ref.nextSibling);
+    var md=document.createElement('div');md.className='mo';md.id='mAviso';
+    md.innerHTML='<div class="md mw" style="width:640px"><div class="mt" id="avMT">📢 Novo aviso</div><div id="avEdBody"></div><div class="ma"><button class="btn bg" id="avCancel">Cancelar</button><button class="btn bp" id="avSave">💾 Guardar</button><button class="btn" id="avSaveWA" style="background:#25d366;color:#06301a;font-weight:700">💾 Guardar e enviar 💬</button></div></div>';
+    document.body.appendChild(md);
+    var nc=gi('nv-convocatorias')||gi('nv-horarios');
+    if(nc&&!gi('nv-avisos')){var ni=document.createElement('div');ni.className='ni';ni.id='nv-avisos';ni.setAttribute('data-go','avisos');ni.textContent='📢 Avisos';nc.parentNode.insertBefore(ni,nc.nextSibling);ni.addEventListener('click',function(){go('avisos');});}
+    var og=go;go=function(page){var r=og.apply(this,arguments);if(page==='avisos'){gi('TT').textContent='Avisos';try{rAvisos();}catch(e){console.error(e);}}return r;};
+    if(typeof rDash==='function'&&!rDash.__av){var od=rDash;rDash=function(){var r=od.apply(this,arguments);try{avDash();}catch(e){console.warn(e);}return r;};rDash.__av=1;}
+    var st=document.createElement('style');st.textContent=
+      '.av-sec{font-family:Syne,sans-serif;font-weight:700;font-size:14px;margin:16px 0 8px;color:var(--wd)}.av-vazio{padding:16px;text-align:center;color:var(--wd);font-size:13px;border:1px dashed var(--b);border-radius:12px}'
+      +'.av-c{border:1px solid var(--b);border-left:4px solid var(--a);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:var(--m)}.av-c.fx{border-left-color:#f5c842}.av-c.arq{opacity:.6}'
+      +'.av-t{font-weight:700;font-size:14.5px}.av-x{font-size:13.5px;margin:6px 0;line-height:1.45}.av-m{font-size:11.5px;color:var(--wd)}'
+      +'.av-dash{border:1px solid rgba(245,200,66,.35);background:linear-gradient(135deg,rgba(245,200,66,.08),rgba(13,42,84,.35));border-radius:14px;padding:12px 14px;margin:14px 0}.av-dh{font-family:Syne,sans-serif;font-weight:700;font-size:13px;color:#f5c842;margin-bottom:8px}.av-dh span{color:var(--wd);font-weight:400;font-family:inherit}.av-dash .av-c{cursor:pointer;background:rgba(10,22,40,.45);margin-bottom:6px}'
+      +'.av-ch{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}.av-nd summary{cursor:pointer;font-size:12.5px;color:var(--wd)}.av-nl{max-height:200px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:2px 10px;font-size:13px}.av-nl small{color:var(--wd)}'
+      +'.av-g{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.av-prev{background:#0b141a;border-radius:10px;padding:10px 12px;font-size:13.5px;line-height:1.45;color:#e9edef;border:1px solid #1f2c33}'
+      +'@media(max-width:600px){.av-g{grid-template-columns:1fr}}';
+    document.head.appendChild(st);
+    bon('avNovo',function(){avAbrir(null);});
+    bon('avCancel',function(){closeM('mAviso');AV_ED=null;});
+    bon('avSave',function(){avGuardar(false);});
+    bon('avSaveWA',function(){avGuardar(true);});
+    document.addEventListener('click',function(ev){var t=ev.target.closest&&ev.target.closest('[data-av-wa],[data-av-ed],[data-av-dup],[data-av-del],[data-av-arq],[data-av-go]');if(!t)return;var v;
+      if((v=t.getAttribute('data-av-wa'))){avWA(v);return;}
+      if((v=t.getAttribute('data-av-ed'))){avAbrir(v);return;}
+      if((v=t.getAttribute('data-av-dup'))){avAbrir(v,true);return;}
+      if((v=t.getAttribute('data-av-del'))){avApagar(v);return;}
+      if(t.getAttribute('data-av-arq')){AV_ARQ=!AV_ARQ;rAvisos();return;}
+      if(t.getAttribute('data-av-go')){go('avisos');return;}
+    });
+    md.addEventListener('click',function(ev){var t=ev.target.closest('[data-av-todos],[data-av-eq]');if(!t||!AV_ED)return;avLerEd();var d=AV_ED.dest;
+      if(t.getAttribute('data-av-todos')){d.todos=!d.todos;}else{var k=t.getAttribute('data-av-eq'),i=d.equipas.indexOf(k);if(i>=0)d.equipas.splice(i,1);else d.equipas.push(k);}
+      avRenderEd();});
+    md.addEventListener('change',function(ev){var t=ev.target,id=t.getAttribute('data-av-nd');if(id&&AV_ED){var L=AV_ED.dest.nadIds,i=L.indexOf(id);if(t.checked&&i<0)L.push(id);if(!t.checked&&i>=0)L.splice(i,1);
+        var s=md.querySelector('.av-nd summary');if(s)s.textContent='Ou nadadores escolhidos ('+L.length+')';}avPrev();});
+    md.addEventListener('input',function(ev){if(ev.target.id==='avNdQ'){var q=ev.target.value.toLowerCase();md.querySelectorAll('.av-nl label').forEach(function(l){l.style.display=l.getAttribute('data-nm').indexOf(q)>=0?'':'none';});return;}avPrev();});
+    try{avDash();}catch(e){}
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wire);else wire();
+})();
+
+</script>
+<!-- AV-FIM -->
 </body>
 </html>
