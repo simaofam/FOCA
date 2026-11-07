@@ -29618,5 +29618,128 @@ function abRender(){
 
 </script>
 <!-- AB-FIM -->
+<!-- CP-INICIO -->
+<script>
+// ═══ CONVOCATÓRIAS: pedir as provas aos atletas por link (página provas.html) ═══
+// Documento público seasons/<época>__prv_<token> (só a convocatória, sem dados da época):
+//   {tipo:'provas', v:1, conv:{nome,data,local,piscina}, sessoes:[{id,lbl,data,inicio,cols:[{key,dist,estilo,est,gens}]}],
+//    atletas:[{k,nome,sexo}], limite:'AAAA-MM-DDTHH:MM'|'', ts, respostas:{k:{provas:[colKey], nota, ts}}}
+// Na FOCA: CC.prv = {token, mapa:{k:nadId}, limite, publicado}. As respostas são propostas: só entram na grelha com "Aplicar".
+var CP_RESP={}; // id da convocatória → {respostas, lido}
+function cpTok(n){var c='abcdefghijkmnpqrstuvwxyz23456789',s='';var a=new Uint8Array(n);(window.crypto||window.msCrypto).getRandomValues(a);for(var i=0;i<n;i++)s+=c[a[i]%c.length];return s;}
+function cpDocId(tok){return fbDocId(cs)+'__prv_'+tok;}
+function cpUrl(tok){var base=String(location.href).split('#')[0].split('?')[0].replace(/[^\/]*$/,'');return base+'provas.html?e='+encodeURIComponent(fbDocId(cs))+'&t='+encodeURIComponent(tok);}
+function cpNomeCurto(nome){var w=String(nome||'').trim().split(/\s+/);return w.length>1?w[0]+' '+w[w.length-1]:w[0]||'';}
+function cpLimiteLbl(l){if(!l)return '';var d=new Date(l);if(isNaN(d))return l;return d.toLocaleDateString('pt-PT',{weekday:'short',day:'numeric',month:'short'})+' às '+String(d.getHours()).padStart(2,'0')+'h'+String(d.getMinutes()).padStart(2,'0');}
+function cpPayload(){
+  var P=CC.prv,mapa={},inv={};
+  Object.keys(P.mapa||{}).forEach(function(k){inv[P.mapa[k]]=k;});
+  var atletas=ccAtletasOrd().map(function(a){var k=inv[a.id];if(!k){do{k=cpTok(6);}while(P.mapa&&P.mapa[k]);}mapa[k]=a.id;
+    return {k:k,nome:cpNomeCurto(ccNad(a.id).nome),sexo:a.sexo||''};});
+  // mantém as chaves antigas (respostas de atletas que saíram continuam associadas)
+  Object.keys(P.mapa||{}).forEach(function(k){if(!mapa[k])mapa[k]=P.mapa[k];});
+  P.mapa=mapa;
+  var sessoes=CC.sessoes.map(function(s,i){return {id:s.id,lbl:ccSessLbl(s,i),data:s.data||'',inicio:s.inicio||'',
+    cols:ccColunas(s).map(function(c){return {key:c.key,dist:c.dist,estilo:c.estilo,est:!!c.est,gens:c.gens.slice()};})};});
+  return {tipo:'provas',v:1,conv:{nome:CC.nome||'',data:CC.data||'',local:CC.local||'',piscina:CC.piscina||''},sessoes:sessoes,atletas:atletas,limite:P.limite||'',ts:new Date().toISOString()};
+}
+function cpPublicar(){
+  if(!CC)return;
+  if(!CC.nome){toast('Indica primeiro o nome da prova (secção 2)','error');return;}
+  if(!CC.sessoes.length||!CC.sessoes.some(function(s){return s.provas.length;})){toast('Primeiro junta as sessões e as provas','error');return;}
+  if(!CC.atletas.length){toast('Primeiro junta os atletas (secção 3)','error');return;}
+  if(typeof fbDB==='undefined'||!fbDB){toast('Sem ligação à cloud: não consigo publicar o link agora','error');return;}
+  CC.prv=CC.prv||{token:cpTok(16),mapa:{},limite:''};
+  var lim=gi('cpLimite');if(lim)CC.prv.limite=lim.value||'';
+  var pl=cpPayload(),bt=gi('cpPub');if(bt){bt.disabled=true;bt.textContent='A publicar…';}
+  fbDB.collection('seasons').doc(cpDocId(CC.prv.token)).set(pl,{merge:true}).then(function(){
+    CC.prv.publicado=pl.ts;ccGuardar();toast('Página dos atletas publicada','success');cpRenderSec();
+  }).catch(function(e){console.error(e);toast('Não foi possível publicar: '+e.message,'error');if(bt){bt.disabled=false;bt.textContent='🔗 Publicar';}});
+}
+function cpLer(cb){
+  if(!CC||!CC.prv||!CC.prv.token||typeof fbDB==='undefined'||!fbDB){if(cb)cb(false);return;}
+  var id=CC.id;
+  fbDB.collection('seasons').doc(cpDocId(CC.prv.token)).get().then(function(doc){
+    CP_RESP[id]={respostas:(doc.exists&&doc.data().respostas)||{},lido:new Date()};if(cb)cb(true);
+  }).catch(function(e){console.warn('respostas provas:',e);if(cb)cb(false);});
+}
+function cpColDe(key){var r=null;CC.sessoes.some(function(s){return ccColunas(s).some(function(c){if(c.key===key){r=c;return true;}});});return r;}
+function cpAplicar(k){
+  var R=(CP_RESP[CC.id]||{}).respostas||{},n=0;
+  (k?[k]:Object.keys(R)).forEach(function(kk){
+    var nadId=CC.prv.mapa[kk],r=R[kk];if(!nadId||!r||!CC.atletas.some(function(a){return a.id===nadId;}))return;
+    (r.provas||[]).forEach(function(key){var c=cpColDe(key);if(!c)return;var mk=nadId+'|'+key;if(!CC.marcas[mk]){CC.marcas[mk]=c.est?'1':'X';n++;}});
+  });
+  CC_SUJO=true;ccRender();toast(n?n+' prova(s) marcadas na grelha':'Nada de novo para aplicar','success');
+}
+function cpSecHTML(){
+  var P=CC.prv,h='<div class="cc-sec" id="cpSec"><div class="cc-h">📲 Pedir as provas aos atletas</div>';
+  h+='<div class="cc-info">Envia um link por WhatsApp: cada atleta escolhe o seu nome na lista dos convocados e toca nas provas que quer nadar (só vê as do seu género e as mistas). As respostas chegam aqui como <b>propostas</b> e só entram na grelha quando carregas em <b>Aplicar</b>.</div>';
+  h+='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end"><div class="fg" style="margin:0"><label class="fl">Data limite para responder</label><input class="fi" type="datetime-local" id="cpLimite" value="'+ccE(P&&P.limite||'')+'" style="width:auto"></div>'
+    +'<button class="btn bp" id="cpPub">'+(P&&P.publicado?'🔄 Atualizar a página dos atletas':'🔗 Publicar e gerar link')+'</button></div>';
+  if(P&&P.publicado){
+    var url=cpUrl(P.token);
+    h+='<div style="margin-top:10px;font-size:12px;color:var(--wd)">Publicada '+new Date(P.publicado).toLocaleString('pt-PT',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+(P.limite?' · aceita respostas até '+ccE(cpLimiteLbl(P.limite)):' · sem data limite')+'. Se mudares sessões, provas ou atletas, carrega em «Atualizar».</div>'
+      +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center"><input class="fi" readonly id="cpUrl" value="'+ccE(url)+'" style="flex:1;min-width:200px;font-size:12px">'
+      +'<button class="btn bg bs" id="cpCopiar">📋 Copiar</button><button class="btn bs" id="cpWA" style="background:#25d366;color:#06301a">💬 Enviar por WhatsApp</button></div>';
+    var RR=CP_RESP[CC.id];
+    h+='<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:14px 0 6px"><b>Respostas</b><div style="display:flex;gap:6px"><button class="btn bg bs" id="cpRec">🔄 Ver respostas</button>'
+      +(RR&&Object.keys(RR.respostas).length?'<button class="btn bp bs" id="cpAplTodas">✓ Aplicar todas</button>':'')+'</div></div>';
+    if(!RR)h+='<div style="font-size:12px;color:var(--wd)">A carregar…</div>';
+    else{
+      var ats=ccAtletasOrd(),inv={};Object.keys(P.mapa).forEach(function(k){inv[P.mapa[k]]=k;});
+      var resp=ats.filter(function(a){return RR.respostas[inv[a.id]];}),falta=ats.filter(function(a){return !RR.respostas[inv[a.id]];});
+      h+='<div style="font-size:12px;color:var(--wd);margin-bottom:6px">'+resp.length+' de '+ats.length+' responderam · lido às '+RR.lido.toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})+'</div>';
+      if(resp.length){h+='<div class="cp-l">';
+        resp.forEach(function(a){var k=inv[a.id],r=RR.respostas[k],n=ccNad(a.id);
+          var porSes=[],pend=0;
+          CC.sessoes.forEach(function(s,i){var l=[];ccColunas(s).forEach(function(c){if((r.provas||[]).indexOf(c.key)>=0){var on=!!CC.marcas[a.id+'|'+c.key];if(!on)pend++;l.push('<span class="cp-p'+(on?' on':'')+'">'+(c.est?'4×':'')+c.dist+' '+(CC_ABR[c.estilo]||c.estilo)+'</span>');}});
+            if(l.length)porSes.push('<div class="cp-s"><small>'+ccE(ccSessLbl(s,i).replace(' jornada · ','J·').replace(' sessão','S'))+'</small> '+l.join(' ')+'</div>');});
+          h+='<div class="cp-r"><div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b>'+ccE(n.nome)+'</b><span style="font-size:11px;color:var(--wd)">'+(r.ts?new Date(r.ts).toLocaleString('pt-PT',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'')+'</span></div>'
+            +(porSes.length?porSes.join(''):'<div style="font-size:12px;color:var(--wd)">Não escolheu provas.</div>')
+            +(r.nota?'<div class="cp-n">📝 '+ccE(r.nota)+'</div>':'')
+            +(pend?'<button class="btn bp bs" data-cp-apl="'+k+'" style="margin-top:6px">✓ Aplicar ('+pend+')</button>':'<div style="font-size:11px;color:#00e5a0;margin-top:4px">✓ já está na grelha</div>')+'</div>';});
+        h+='</div>';}
+      if(falta.length)h+='<div style="font-size:12px;color:var(--wd);margin-top:8px">⏳ Ainda sem resposta: '+falta.map(function(a){return ccE(ccNad(a.id).nome);}).join(', ')+'</div>';
+    }
+  }
+  return h+'</div>';
+}
+function cpRenderSec(){
+  var b=gi('ccBody');if(!b||!CC)return;
+  var old=gi('cpSec'),html=cpSecHTML();
+  if(old){old.outerHTML=html;return;}
+  var secs=b.querySelectorAll('.cc-sec'),alvo=null;
+  secs.forEach(function(s){var t=s.querySelector('.cc-h');if(t&&/^4\./.test(t.textContent.trim()))alvo=s;});
+  var tmp=document.createElement('div');tmp.innerHTML=html;
+  if(alvo)b.insertBefore(tmp.firstChild,alvo);else b.appendChild(tmp.firstChild);
+}
+(function cpInit(){
+  function wire(){
+    if(typeof ccRender!=='function'||ccRender.__cp)return;
+    var o=ccRender;ccRender=function(){var r=o.apply(this,arguments);try{cpRenderSec();}catch(e){console.warn(e);}return r;};ccRender.__cp=1;
+    var oa=ccAbrir;ccAbrir=function(){var r=oa.apply(this,arguments);if(CC&&CC.prv&&CC.prv.publicado){delete CP_RESP[CC.id];cpLer(function(){if(CC)cpRenderSec();});}return r;};
+    var od=ccDuplicar;ccDuplicar=function(id){var n0=ccLista().length;od.apply(this,arguments);var L=ccLista();if(L.length>n0){delete L[L.length-1].prv;save();}};
+    if(!gi('cpCss')){var st=document.createElement('style');st.id='cpCss';st.textContent=
+      '.cp-l{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px}.cp-r{border:1px solid var(--b);border-radius:10px;padding:8px 10px;background:rgba(10,22,40,.45)}'
+      +'.cp-s{font-size:12px;margin-top:4px}.cp-s small{color:var(--wd);margin-right:3px}.cp-p{display:inline-block;border:1px solid var(--b);border-radius:6px;padding:1px 6px;margin:1px 0;background:rgba(245,200,66,.12)}'
+      +'.cp-p.on{background:rgba(0,229,160,.15);border-color:rgba(0,229,160,.45)}.cp-n{font-size:12px;color:var(--wd);margin-top:4px}';document.head.appendChild(st);}
+    var m=gi('mCC');
+    m.addEventListener('click',function(ev){if(!CC)return;var t=ev.target.closest('button');if(!t)return;var v;
+      if(t.id==='cpPub'){cpPublicar();return;}
+      if(t.id==='cpCopiar'){var u=gi('cpUrl');try{navigator.clipboard.writeText(u.value);toast('Link copiado','success');}catch(e){u.select();document.execCommand('copy');toast('Link copiado','success');}return;}
+      if(t.id==='cpWA'){var txt='🏊 *'+CC.nome+'*'+(CC.data?' ('+CC.data+')':'')+'\nEscolhe as provas que queres nadar neste link'+(CC.prv.limite?' até '+cpLimiteLbl(CC.prv.limite):'')+':\n'+cpUrl(CC.prv.token);
+        window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');return;}
+      if(t.id==='cpRec'){t.disabled=true;t.textContent='A ler…';cpLer(function(ok){if(!ok)toast('Não consegui ler as respostas (sem ligação?)','error');cpRenderSec();});return;}
+      if(t.id==='cpAplTodas'){cpAplicar(null);return;}
+      if((v=t.getAttribute('data-cp-apl'))){cpAplicar(v);return;}
+    });
+    m.addEventListener('change',function(ev){if(ev.target.id==='cpLimite'&&CC){CC.prv=CC.prv||{token:cpTok(16),mapa:{},limite:''};CC.prv.limite=ev.target.value||'';CC_SUJO=true;}});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wire);else wire();
+})();
+
+</script>
+<!-- CP-FIM -->
 </body>
 </html>
