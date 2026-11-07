@@ -30096,5 +30096,118 @@ function waInjeta(){
 
 </script>
 <!-- WA-FIM -->
+<!-- RF-INICIO -->
+<script>
+// ═══ 📝 REFLEXÃO PÓS-COMPETIÇÃO (na convocatória de competição + ficha do nadador) ═══
+// Documento público seasons/<época>__rfx_<token> (só a convocatória e as provas de cada atleta):
+//   {tipo:'reflexao', v:1, conv:{nome,data,local}, atletas:[{k,nome,provas:[{key,lbl,ses}]}], limite, ts,
+//    respostas:{k:{provas:{key:{sens:1-5, obj:'sim'|'quase'|'nao', com}}, nota:0-10, bem, melhorar, fisico:1-5, ts}}}
+// Na FOCA: CC.rfx = {token, mapa:{k:nadId}, limite, publicado, respostas(cópia), lido}
+function rfDocId(t){return fbDocId(cs)+'__rfx_'+t;}
+function rfUrl(t){var base=String(location.href).split('#')[0].split('?')[0].replace(/[^\/]*$/,'');return base+'reflexao.html?e='+encodeURIComponent(fbDocId(cs))+'&t='+encodeURIComponent(t);}
+var RF_OBJ={sim:'✅ cumpriu',quase:'🟡 quase',nao:'❌ não cumpriu'};
+function rfProvasAtleta(aid){var L=[];CC.sessoes.forEach(function(s,i){ccColunas(s).forEach(function(c){var v=CC.marcas[aid+'|'+c.key];if(v)L.push({key:c.key,lbl:(c.est?'4×':'')+c.dist+' '+c.estilo+(c.est?' (estafeta)':''),ses:ccSessLbl(s,i)});});});return L;}
+function rfPayload(){
+  var R=CC.rfx,inv={},mapa={};Object.keys(R.mapa||{}).forEach(function(k){inv[R.mapa[k]]=k;});
+  var at=ccAtletasOrd().map(function(a){var pv=rfProvasAtleta(a.id);if(!pv.length)return null;var k=inv[a.id];if(!k){do{k=cpTok(6);}while((R.mapa||{})[k]);}mapa[k]=a.id;return {k:k,nome:cpNomeCurto(ccNad(a.id).nome),provas:pv};}).filter(Boolean);
+  Object.keys(R.mapa||{}).forEach(function(k){if(!mapa[k])mapa[k]=R.mapa[k];});R.mapa=mapa;
+  return {tipo:'reflexao',v:1,conv:{nome:CC.nome||'',data:CC.data||'',local:CC.local||''},atletas:at,limite:R.limite||'',ts:new Date().toISOString()};
+}
+function rfPublicar(){
+  if(!CC)return;if(!CC.nome){toast('Indica o nome da prova (secção 2)','error');return;}
+  if(!Object.keys(CC.marcas||{}).length){toast('Primeiro marca as provas de cada atleta na grelha (secção 4)','error');return;}
+  if(typeof fbDB==='undefined'||!fbDB){toast('Sem ligação à cloud: não consigo publicar o link agora','error');return;}
+  CC.rfx=CC.rfx||{token:cpTok(16),mapa:{},limite:''};var l=gi('rfLimite');if(l)CC.rfx.limite=l.value||'';
+  var pl=rfPayload(),bt=gi('rfPub');if(bt){bt.disabled=true;bt.textContent='A publicar…';}
+  fbDB.collection('seasons').doc(rfDocId(CC.rfx.token)).set(pl,{merge:true}).then(function(){CC.rfx.publicado=pl.ts;ccGuardar();toast('Reflexão publicada','success');rfRenderSec();})
+    .catch(function(e){console.error(e);toast('Não foi possível publicar: '+e.message,'error');if(bt){bt.disabled=false;bt.textContent='🔗 Publicar';}});
+}
+function rfLer(cb){
+  if(!CC||!CC.rfx||!CC.rfx.token||typeof fbDB==='undefined'||!fbDB){if(cb)cb(false);return;}
+  var id=CC.id;
+  fbDB.collection('seasons').doc(rfDocId(CC.rfx.token)).get().then(function(doc){
+    if(!CC||CC.id!==id){if(cb)cb(false);return;}
+    var r=(doc.exists&&doc.data().respostas)||{};
+    var antes=JSON.stringify(CC.rfx.respostas||{});CC.rfx.respostas=r;CC.rfx.lido=new Date().toISOString();
+    // guarda a cópia das respostas na convocatória (fica no histórico da ficha do nadador)
+    var L=ccLista(),i=L.findIndex(function(c){return c.id===CC.id;});
+    if(i>=0&&JSON.stringify(r)!==antes){L[i].rfx=JSON.parse(JSON.stringify(CC.rfx));save();}
+    if(cb)cb(true);
+  }).catch(function(e){console.warn('reflexão:',e);if(cb)cb(false);});
+}
+function rfRespHTML(r,provasNome){
+  var h='';
+  Object.keys(r.provas||{}).forEach(function(key){var p=r.provas[key];if(!p||(!p.sens&&!p.obj&&!p.com))return;h+='<div class="rf-p"><b>'+ccE(provasNome(key))+'</b> · '+'⭐'.repeat(+p.sens||0)+(p.obj?' · '+RF_OBJ[p.obj]:'')+(p.com?'<br><span>'+ccE(p.com)+'</span>':'')+'</div>';});
+  h+='<div class="rf-g">'+(r.nota!=null&&r.nota!==''?'<span>Nota da competição <b>'+r.nota+'/10</b></span>':'')+(r.fisico?'<span>Estado físico <b>'+r.fisico+'/5</b></span>':'')+'</div>';
+  if(r.bem)h+='<div class="rf-t">👍 <b>Correu bem:</b> '+ccE(r.bem)+'</div>';
+  if(r.melhorar)h+='<div class="rf-t">🎯 <b>A melhorar:</b> '+ccE(r.melhorar)+'</div>';
+  return h;
+}
+function rfSecHTML(){
+  var R=CC.rfx,h='<div class="cc-sec" id="rfSec"><div class="cc-h">📝 Reflexão pós-competição</div>'
+    +'<div class="cc-info">Depois da prova, envia um link: cada atleta escolhe o seu nome e responde <b>por cada prova que nadou</b> (como se sentiu, se cumpriu o objetivo, comentário) e <b>no geral</b> (nota da competição, o que correu bem, o que tem de melhorar, estado físico). As respostas ficam aqui e na <b>ficha de cada nadador</b>.</div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end"><div class="fg" style="margin:0"><label class="fl">Data limite para responder</label><input class="fi" type="datetime-local" id="rfLimite" value="'+ccE(R&&R.limite||'')+'" style="width:auto"></div>'
+    +'<button class="btn bp" id="rfPub">'+(R&&R.publicado?'🔄 Atualizar a página':'🔗 Publicar e gerar link')+'</button></div>';
+  if(R&&R.publicado){
+    var url=rfUrl(R.token);
+    h+='<div style="margin-top:10px;font-size:12px;color:var(--wd)">Publicada '+new Date(R.publicado).toLocaleString('pt-PT',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+(R.limite?' · aceita respostas até '+ccE(cpLimiteLbl(R.limite)):' · sem data limite')+'. Só aparecem os atletas com provas marcadas na grelha.</div>'
+      +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center"><input class="fi" readonly id="rfUrlI" value="'+ccE(url)+'" style="flex:1;min-width:200px;font-size:12px"><button class="btn bg bs" id="rfCopiar">📋 Copiar</button><button class="btn bs" id="rfWA" style="background:#25d366;color:#06301a">💬 Enviar por WhatsApp</button></div>'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 6px"><b>Respostas</b><button class="btn bg bs" id="rfRec">🔄 Ver respostas</button></div>';
+    var resp=R.respostas||{},inv={};Object.keys(R.mapa||{}).forEach(function(k){inv[R.mapa[k]]=k;});
+    var com=ccAtletasOrd().filter(function(a){return rfProvasAtleta(a.id).length;}),ok=com.filter(function(a){return resp[inv[a.id]];}),falta=com.filter(function(a){return !resp[inv[a.id]];});
+    var nomeProva=function(key){var c=cpColDe(key),sid=key.split('~')[0],si=CC.sessoes.findIndex(function(x){return x.id===sid;}),sl=si>=0?ccSessLbl(CC.sessoes[si],si).replace(' jornada · ','J·').replace(' sessão','S')+' · ':'';return sl+(c?((c.est?'4×':'')+c.dist+' '+c.estilo):key);};
+    h+='<div style="font-size:12px;color:var(--wd);margin-bottom:6px">'+ok.length+' de '+com.length+' responderam'+(R.lido?' · lido '+new Date(R.lido).toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'}):'')+'</div>';
+    if(ok.length){h+='<div class="cp-l">'+ok.map(function(a){var r=resp[inv[a.id]];return '<div class="cp-r"><div style="display:flex;justify-content:space-between;gap:8px"><b>'+ccE(ccNad(a.id).nome)+'</b><span style="font-size:11px;color:var(--wd)">'+(r.ts?new Date(r.ts).toLocaleString('pt-PT',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'')+'</span></div>'+rfRespHTML(r,nomeProva)+'</div>';}).join('')+'</div>';}
+    if(falta.length)h+='<div style="font-size:12px;color:var(--wd);margin-top:8px">⏳ Ainda sem resposta: '+falta.map(function(a){return ccE(ccNad(a.id).nome);}).join(', ')+'</div>';
+  }
+  return h+'</div>';
+}
+function rfRenderSec(){
+  var b=gi('ccBody');if(!b||!CC)return;var old=gi('rfSec'),html=rfSecHTML();
+  if(old){old.outerHTML=html;return;}
+  var secs=b.querySelectorAll('.cc-sec'),alvo=null;secs.forEach(function(s){var t=s.querySelector('.cc-h');if(t&&/^6\./.test(t.textContent.trim()))alvo=s;});
+  var tmp=document.createElement('div');tmp.innerHTML=html;if(alvo&&alvo.nextSibling)b.insertBefore(tmp.firstChild,alvo.nextSibling);else b.appendChild(tmp.firstChild);
+}
+// ── ficha do nadador: histórico das reflexões ──
+function rfHistorico(nadId){
+  var out=[];ccLista().forEach(function(c){var R=c.rfx;if(!R||!R.respostas||!R.mapa)return;
+    Object.keys(R.mapa).forEach(function(k){if(R.mapa[k]===nadId&&R.respostas[k])out.push({c:c,r:R.respostas[k]});});});
+  return out.sort(function(a,b){return (b.r.ts||'').localeCompare(a.r.ts||'');});
+}
+function rfFicha(){
+  var mo=gi('mN');if(!mo||!mo.classList.contains('on'))return;var id=(gi('nId')||{}).value;var box=gi('rfFicha');
+  if(!id){if(box)box.remove();return;}
+  var L=rfHistorico(id);
+  if(!box){box=document.createElement('div');box.id='rfFicha';var ma=mo.querySelector('.ma');ma.parentNode.insertBefore(box,ma);}
+  if(!L.length){box.innerHTML='';return;}
+  box.innerHTML='<details class="rf-fi"><summary>📝 Reflexões pós-competição ('+L.length+')</summary>'+L.map(function(o){
+    var cols={};(o.c.sessoes||[]).forEach(function(s,si){(s.provas||[]).forEach(function(p){cols[s.id+'~'+(p.est?'E':'I')+p.dist+p.estilo]=(si+1)+'ª sessão · '+(p.est?'4×':'')+p.dist+' '+p.estilo;});});
+    return '<div class="cp-r" style="margin-top:8px"><div style="font-weight:700">'+ccE(o.c.nome||'')+'</div><div style="font-size:11px;color:var(--wd)">'+ccE(o.c.data||'')+'</div>'+rfRespHTML(o.r,function(k){return cols[k]||k;})+'</div>';}).join('')+'</details>';
+}
+(function rfInit(){
+  function wire(){
+    if(typeof ccRender!=='function'||ccRender.__rf)return;
+    var o=ccRender;ccRender=function(){var r=o.apply(this,arguments);try{rfRenderSec();}catch(e){console.warn(e);}return r;};ccRender.__rf=1;
+    var oa=ccAbrir;ccAbrir=function(){var r=oa.apply(this,arguments);if(CC&&CC.rfx&&CC.rfx.publicado)rfLer(function(){if(CC)rfRenderSec();});return r;};
+    var od=ccDuplicar;ccDuplicar=function(){var n0=ccLista().length;od.apply(this,arguments);var L=ccLista();if(L.length>n0){delete L[L.length-1].rfx;save();}};
+    var st=document.createElement('style');st.textContent='.rf-p{font-size:12.5px;margin-top:6px;line-height:1.4}.rf-p span{color:var(--wd)}.rf-g{display:flex;gap:12px;flex-wrap:wrap;font-size:12.5px;margin-top:6px}.rf-t{font-size:12.5px;margin-top:4px;line-height:1.4}'
+      +'.rf-fi summary{cursor:pointer;font-size:13px;color:var(--wd);margin:6px 0}'
+      +'.cp-l{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px}.cp-r{border:1px solid var(--b);border-radius:10px;padding:8px 10px;background:rgba(10,22,40,.45)}';
+    document.head.appendChild(st);
+    var m=gi('mCC');
+    m.addEventListener('click',function(ev){if(!CC)return;var t=ev.target.closest('button');if(!t)return;
+      if(t.id==='rfPub'){rfPublicar();return;}
+      if(t.id==='rfCopiar'){var u=gi('rfUrlI');try{navigator.clipboard.writeText(u.value);}catch(e){u.select();document.execCommand('copy');}toast('Link copiado','success');return;}
+      if(t.id==='rfWA'){var txt='📝 *Reflexão pós-competição — '+CC.nome+'*\nConta-nos como correram as tuas provas'+(CC.rfx.limite?' (até '+cpLimiteLbl(CC.rfx.limite)+')':'')+':\n'+rfUrl(CC.rfx.token);window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');return;}
+      if(t.id==='rfRec'){t.disabled=true;t.textContent='A ler…';rfLer(function(ok){if(!ok)toast('Não consegui ler as respostas (sem ligação?)','error');rfRenderSec();});return;}
+    });
+    m.addEventListener('change',function(ev){if(ev.target.id==='rfLimite'&&CC){CC.rfx=CC.rfx||{token:cpTok(16),mapa:{},limite:''};CC.rfx.limite=ev.target.value||'';CC_SUJO=true;}});
+    var mn=gi('mN');if(mn)new MutationObserver(function(){if(mn.classList.contains('on'))setTimeout(rfFicha,30);}).observe(mn,{attributes:true,attributeFilter:['class']});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wire);else wire();
+})();
+
+</script>
+<!-- RF-FIM -->
 </body>
 </html>

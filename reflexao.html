@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0a1628">
+<title>FOCA · Reflexão pós-competição</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<style>
+:root{--d:#0a1628;--m:#0d2240;--s:#103460;--a:#00c2ff;--w:#f0f6ff;--wd:rgba(240,246,255,.6);--b:rgba(0,194,255,.15);--r:#ff4f6d;--gr:#00e5a0;--y:#f5c842}
+*{box-sizing:border-box}
+body{margin:0;background:var(--d);color:var(--w);font-family:'DM Sans',sans-serif;font-size:15px;-webkit-tap-highlight-color:transparent}
+.top{background:linear-gradient(135deg,#0d2a54,#0a1628);border-bottom:1px solid var(--b);padding:14px 16px}
+.top .c{font-size:11px;letter-spacing:1.5px;color:var(--wd);text-transform:uppercase}
+.top .t{font-family:'Syne',sans-serif;font-size:19px;font-weight:800}
+.wrap{max-width:520px;margin:0 auto;padding:6px 16px 40px}
+h1{font-family:'Syne',sans-serif;font-size:20px;margin:0 0 4px;line-height:1.25}
+.sub{color:var(--wd);font-size:13px}
+.card{background:var(--m);border:1px solid var(--b);border-radius:16px;padding:14px;margin-top:14px}
+.ql{font-weight:700;margin-bottom:10px}
+select,textarea{width:100%;background:var(--s);border:1px solid var(--b);border-radius:12px;color:var(--w);padding:12px;font-size:16px;font-family:inherit}
+textarea{min-height:70px;resize:vertical;font-size:15px}
+.pv{display:flex;flex-wrap:wrap;gap:8px}
+.pv button{background:var(--s);border:2px solid transparent;border-radius:22px;color:var(--w);padding:10px 16px;font-family:inherit;font-weight:700;font-size:15px;cursor:pointer;touch-action:manipulation}
+.pv button small{font-weight:400;font-size:11px;color:var(--wd);margin-left:3px}
+.pv button.on{background:var(--a);color:#03203a;border-color:var(--a)}
+.pv button.on small{color:#03203a}
+.btn{width:100%;margin-top:16px;background:var(--a);color:#03203a;border:0;border-radius:14px;padding:15px;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer}
+.btn:disabled{opacity:.5}
+.msg{margin-top:12px;padding:12px;border-radius:12px;font-size:14px;display:none;line-height:1.4}
+.msg.ok{display:block;background:rgba(0,229,160,.12);border:1px solid rgba(0,229,160,.4)}
+.msg.err{display:block;background:rgba(255,79,109,.12);border:1px solid rgba(255,79,109,.4)}
+.lim{margin-top:8px;font-size:13px;color:var(--y)}
+.erro{padding:30px 10px;text-align:center;color:var(--wd)}
+.nota{color:var(--wd);font-size:12px;margin-top:12px;line-height:1.45}
+.cont{font-size:13px;color:var(--wd);margin-top:6px}
+.pc{border:1px solid var(--b);border-radius:12px;padding:10px;margin-top:10px;background:rgba(10,22,40,.4)}
+.pc .pl{font-weight:700}.pc .ps{font-size:12px;color:var(--wd)}
+.row{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.row button{background:var(--s);border:2px solid transparent;border-radius:18px;color:var(--w);padding:8px 12px;font-family:inherit;font-size:14px;cursor:pointer;touch-action:manipulation}
+.row button.on{background:var(--a);color:#03203a;border-color:var(--a);font-weight:700}
+.row.st button{font-size:20px;padding:4px 8px;background:none;filter:grayscale(1);opacity:.45}.row.st button.on{filter:none;opacity:1;background:none;border-color:transparent}
+.row.nt button{min-width:38px;padding:8px 0}
+input.tx{width:100%;margin-top:8px;background:var(--s);border:1px solid var(--b);border-radius:10px;color:var(--w);padding:10px;font-size:15px;font-family:inherit}
+.lb{font-size:13px;color:var(--wd);margin-top:12px}
+</style>
+</head>
+<body>
+<div class="top"><div class="c">Clube de Natação de Felgueiras</div><div class="t">Reflexão pós-competição</div></div>
+<div class="wrap" id="app"><div class="erro">A carregar…</div></div>
+<script>
+// Página do atleta: só lê e escreve o documento seasons/<época>__rfx_<código>. Sem acesso ao resto do FOCA.
+var FB_CONFIG={apiKey:"AIzaSyBA2EdheCvUIjS15fAF9BodI_mjTC4eaZM",authDomain:"foca-natacao.firebaseapp.com",projectId:"foca-natacao",storageBucket:"foca-natacao.firebasestorage.app",messagingSenderId:"1059059053231",appId:"1:1059059053231:web:5b6cdc3338e59a6a3c5a5a"};
+var q=new URLSearchParams(location.search),EP=q.get('e')||'',TK=q.get('t')||'';
+var db=null,ref=null,DOC=null,EU=null,R=null;
+var OBJ=[['sim','✅ Sim'],['quase','🟡 Quase'],['nao','❌ Não']];
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function limLbl(l){var d=new Date(l);if(isNaN(d))return l;return d.toLocaleDateString('pt-PT',{weekday:'long',day:'numeric',month:'long'})+' às '+String(d.getHours()).padStart(2,'0')+'h'+String(d.getMinutes()).padStart(2,'0');}
+function fechado(){return DOC.limite&&new Date()>new Date(DOC.limite);}
+function novo(){return {provas:{},nota:null,fisico:null,bem:'',melhorar:''};}
+function lerTextos(){document.querySelectorAll('[data-com]').forEach(function(i){var k=i.getAttribute('data-com');R.provas[k]=R.provas[k]||{};R.provas[k].com=i.value;});
+  var b=document.getElementById('bem'),m=document.getElementById('mel');if(b)R.bem=b.value;if(m)R.melhorar=m.value;}
+function render(){
+  var c=DOC.conv||{},fx=fechado(),h='<div class="card"><h1>'+esc(c.nome||'Competição')+'</h1><div class="sub">'+esc([c.data,c.local].filter(Boolean).join(' · '))+'</div>'
+    +(DOC.limite?'<div class="lim">⏰ '+(fx?'As respostas fecharam em ':'Responde até ')+esc(limLbl(DOC.limite))+'.</div>':'')+'</div>';
+  var ats=(DOC.atletas||[]).slice().sort(function(a,b){return a.nome.localeCompare(b.nome);});
+  h+='<div class="card"><div class="ql">Quem és?</div><select id="eu"><option value="">Escolhe o teu nome…</option>'+ats.map(function(a){var r=DOC.respostas&&DOC.respostas[a.k];return '<option value="'+a.k+'"'+(EU&&EU.k===a.k?' selected':'')+'>'+esc(a.nome)+(r?' ✓':'')+'</option>';}).join('')+'</select></div>';
+  if(EU){
+    h+='<div class="card"><div class="ql">As tuas provas</div>';
+    (EU.provas||[]).forEach(function(p){var r=R.provas[p.key]||{};
+      h+='<div class="pc"><div class="pl">'+esc(p.lbl)+'</div><div class="ps">'+esc(p.ses)+'</div>'
+        +'<div class="lb">Como te sentiste?</div><div class="row st">'+[1,2,3,4,5].map(function(n){return '<button type="button" class="'+((r.sens||0)>=n?'on':'')+'" data-sens="'+esc(p.key)+'|'+n+'"'+(fx?' disabled':'')+'>⭐</button>';}).join('')+'</div>'
+        +'<div class="lb">Cumpriste o objetivo?</div><div class="row">'+OBJ.map(function(o){return '<button type="button" class="'+(r.obj===o[0]?'on':'')+'" data-obj="'+esc(p.key)+'|'+o[0]+'"'+(fx?' disabled':'')+'>'+o[1]+'</button>';}).join('')+'</div>'
+        +'<input class="tx" data-com="'+esc(p.key)+'" maxlength="200" placeholder="Comentário (opcional): partida, viragens, ritmo…" value="'+esc(r.com||'')+'"'+(fx?' disabled':'')+'></div>';});
+    h+='</div><div class="card"><div class="ql">No geral</div>'
+      +'<div class="lb">Nota da competição (0 a 10)</div><div class="row nt">'+[0,1,2,3,4,5,6,7,8,9,10].map(function(n){return '<button type="button" class="'+(R.nota===n?'on':'')+'" data-nota="'+n+'"'+(fx?' disabled':'')+'>'+n+'</button>';}).join('')+'</div>'
+      +'<div class="lb">Como estavas fisicamente? (1 = muito cansado · 5 = muito bem)</div><div class="row">'+[1,2,3,4,5].map(function(n){return '<button type="button" class="'+(R.fisico===n?'on':'')+'" data-fis="'+n+'"'+(fx?' disabled':'')+'>'+n+'</button>';}).join('')+'</div>'
+      +'<div class="lb">O que correu bem?</div><textarea id="bem" maxlength="400"'+(fx?' disabled':'')+'>'+esc(R.bem||'')+'</textarea>'
+      +'<div class="lb">O que tens de melhorar?</div><textarea id="mel" maxlength="400"'+(fx?' disabled':'')+'>'+esc(R.melhorar||'')+'</textarea>'
+      +'<button class="btn" id="go"'+(fx?' disabled':'')+'>'+(DOC.respostas&&DOC.respostas[EU.k]?'Atualizar a minha reflexão':'Enviar ao treinador')+'</button><div class="msg" id="msg"></div>'
+      +'<div class="nota">Só o treinador vê as tuas respostas. Se te enganares, volta a enviar: fica a última.</div></div>';
+  }
+  document.getElementById('app').innerHTML=h;
+  document.getElementById('eu').addEventListener('change',function(){var k=this.value;EU=(DOC.atletas||[]).find(function(a){return a.k===k;})||null;
+    var r=EU&&DOC.respostas&&DOC.respostas[EU.k];R=r?JSON.parse(JSON.stringify(r)):novo();R.provas=R.provas||{};render();});
+  document.querySelectorAll('[data-sens],[data-obj],[data-nota],[data-fis]').forEach(function(b){b.addEventListener('click',function(){lerTextos();var v;
+    if((v=this.getAttribute('data-sens'))){var p=v.split('|');R.provas[p[0]]=R.provas[p[0]]||{};R.provas[p[0]].sens=+p[1];}
+    else if((v=this.getAttribute('data-obj'))){var p2=v.split('|');R.provas[p2[0]]=R.provas[p2[0]]||{};R.provas[p2[0]].obj=p2[1];}
+    else if((v=this.getAttribute('data-nota'))!=null){R.nota=+v;}
+    else if((v=this.getAttribute('data-fis'))){R.fisico=+v;}
+    var y=window.scrollY;render();window.scrollTo(0,y);});});
+  var g=document.getElementById('go');if(g)g.addEventListener('click',enviar);
+}
+function msg(t,ok){var m=document.getElementById('msg');m.className='msg '+(ok?'ok':'err');m.textContent=t;}
+function enviar(){
+  lerTextos();if(!EU||fechado())return;
+  var validas={};(EU.provas||[]).forEach(function(p){validas[p.key]=1;});
+  var pv={};Object.keys(R.provas).forEach(function(k){if(validas[k]){var x=R.provas[k],com=String(x.com||'').trim().slice(0,200);if(x.sens||x.obj||com)pv[k]={sens:x.sens||0,obj:x.obj||'',com:com};}});
+  var r={provas:pv,nota:R.nota,fisico:R.fisico,bem:String(R.bem||'').slice(0,400),melhorar:String(R.melhorar||'').slice(0,400),ts:new Date().toISOString()};
+  var bt=document.getElementById('go');bt.disabled=true;bt.textContent='A enviar…';
+  var upd={respostas:{}};upd.respostas[EU.k]=r;
+  ref.get().then(function(doc){if(doc.exists)DOC=doc.data();if(fechado())throw new Error('as respostas já fecharam');return ref.set(upd,{merge:true});})
+    .then(function(){DOC.respostas=DOC.respostas||{};DOC.respostas[EU.k]=r;render();msg('✅ Obrigado, '+EU.nome.split(' ')[0]+'! A tua reflexão foi enviada ao treinador.',true);})
+    .catch(function(err){render();msg('Não foi possível enviar ('+(err&&err.message||err)+'). Verifica a internet e tenta de novo.',false);});
+}
+(function(){
+  if(!EP||!TK||!/^[a-z0-9]{8,40}$/i.test(TK)||!/^\d{4}-\d{4}$/.test(EP)){document.getElementById('app').innerHTML='<div class="erro">Link inválido. Pede ao treinador um link novo.</div>';return;}
+  try{firebase.initializeApp(FB_CONFIG);db=firebase.firestore();}catch(e){document.getElementById('app').innerHTML='<div class="erro">Sem ligação. Tenta mais tarde.</div>';return;}
+  ref=db.collection('seasons').doc(EP+'__rfx_'+TK);
+  ref.get().then(function(doc){
+    if(!doc.exists||!doc.data()||doc.data().tipo!=='reflexao'){document.getElementById('app').innerHTML='<div class="erro">Esta reflexão já não existe. Pede ao treinador um link novo.</div>';return;}
+    DOC=doc.data();render();
+  }).catch(function(){document.getElementById('app').innerHTML='<div class="erro">Sem ligação. Verifica a internet e tenta de novo.</div>';});
+})();
+</script>
+</body>
+</html>
