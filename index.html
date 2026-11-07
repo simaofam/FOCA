@@ -30096,6 +30096,365 @@ function waInjeta(){
 
 </script>
 <!-- WA-FIM -->
+<!-- FM-INICIO -->
+<script>
+// ═══ 📈 PREVISÃO DE FORMA (modelo forma–fadiga, tipo "PMC") — separador próprio ═══
+// Carga diária = PSE × minutos (real) ou estimada (treino planeado / Dinâmica Semanal).
+// Forma = média exponencial 42 dias; Fadiga = 7 dias; Frescura = forma − fadiga (de véspera).
+// Vistas: ⭐ Kika (equipa custom "KIKA") e 👥 Absolutos.
+var FM={vista:null,cfg:{ctl:42,atl:7},comp:'',taperDias:10,taperPct:0,ult:null};
+try{var _fm=JSON.parse(localStorage.getItem('foca-fm-v1')||'{}');if(_fm.cfg)FM.cfg=_fm.cfg;if(_fm.vista)FM.vista=_fm.vista;if(_fm.taperDias)FM.taperDias=_fm.taperDias;}catch(e){}
+function fmGuardaPref(){try{localStorage.setItem('foca-fm-v1',JSON.stringify({cfg:FM.cfg,vista:FM.vista,taperDias:FM.taperDias}));}catch(e){}}
+var FM_RPE={'REC':2,'A1':3,'A1 A2':4,'A2':5,'A3':6.5,'PA':7,'MPL':7.5,'PL':8,'TL':8,'RITMO':7.5,'VEL':7};
+function fmE(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function fmHoje(){return (typeof mpHojeISO==='function')?mpHojeISO():new Date().toISOString().slice(0,10);}
+function fmKika(){var t=(D.equipasCustom||[]).find(function(x){return String(x.nome||'').toUpperCase().indexOf('KIKA')>=0;});if(!t)return null;
+  var n=(D.nadadores||[]).find(function(x){return (t.nadadorIds||[]).indexOf(x.id)>=0;});return n?{nad:n,key:'custom:'+t.id,lbl:t.nome}:null;}
+function fmVistas(){var v=[];var k=fmKika();if(k)v.push({id:'kika',lbl:'⭐ '+(k.nad.nome.split(' ')[0]||'Kika'),key:k.key,ki:k});v.push({id:'abs',lbl:'👥 Absolutos',key:'Absolutos'});return v;}
+// ── estimativa de carga de um treino (unidades PSE×min) ──
+function fmZonasDeSeries(series){var z={},tot=0;['aq','at','pr','rx'].forEach(function(sec){((series&&series[sec])||[]).forEach(function(b){if(!b)return;var v=parseInt(b.voltas)||1;(b.exercises||[]).forEach(function(e){var m=v*(parseInt(e.reps)||1)*(parseInt(e.dist)||0);if(!m)return;var k=anNormInt(e.intensidade||'A1');if(!FM_RPE[k])k='A1';z[k]=(z[k]||0)+m;tot+=m;});});});return {z:z,tot:tot};}
+function fmRpeEst(z,tot){if(!tot)return 0;var med=0,top=0;Object.keys(z).forEach(function(k){med+=z[k]/tot*FM_RPE[k];if(FM_RPE[k]>top&&z[k]>=100)top=FM_RPE[k];});return 0.6*med+0.4*Math.max(top,med);}
+function fmDur(vol,dur){if(dur)return dur;return Math.max(45,Math.min(150,Math.round(vol/40)));}
+function fmEstSessao(s){var r=fmZonasDeSeries(s.series);if(!r.tot)return 0;return fmRpeEst(r.z,r.tot)*fmDur(r.tot,parseInt(s.duracao)||0);}
+function fmEstDin(dp){if(!dp||!dp.vol)return 0;var z={},ints=dp.ints&&dp.ints.length?dp.ints:['A1'];
+  if(dp.pct)Object.keys(dp.pct).forEach(function(k){z[k]=dp.vol*dp.pct[k];});else ints.forEach(function(k){z[k]=dp.vol/ints.length;});
+  Object.keys(z).forEach(function(k){if(!FM_RPE[k]){z.A1=(z.A1||0)+z[k];delete z[k];}});
+  return fmRpeEst(z,dp.vol)*fmDur(dp.vol,dp.duracao);}
+// ── série diária de carga: real até hoje, prevista depois ──
+function fmSerie(v){
+  var hoje=fmHoje(),a0=ndAnoEpoca?ndAnoEpoca(cs):(+String(cs).slice(0,4));
+  var ini=a0+'-09-01',tokens=[v.key],sess=anSessoesEquipa(tokens);
+  if(v.ki)sess=sess.concat(anSessoesEquipa(['ind:'+v.ki.nad.id]));
+  var visto={};sess=sess.filter(function(s){if(visto[s.id])return false;visto[s.id]=1;return true;});
+  var prim=sess.reduce(function(m,s){return (!m||s.data<m)?s.data:m;},'');if(prim&&prim>ini)ini=prim;
+  // horizonte: 2 semanas depois da última competição relevante, entre +8 e +20 semanas
+  var comps=(D.competicoes||[]).filter(function(c){return c&&!c.isRPImport&&c.data&&c.data>=ini;});
+  var ca=(typeof dnCompAlvo==='function')?dnCompAlvo(v.key,hoje):null;
+  var fim=anDateAdd(hoje,56),ult=comps.filter(function(c){return c.data>=hoje;}).map(function(c){return c.data;}).sort().pop();
+  if(ca&&ca.data>fim)fim=ca.data;if(ult&&anDateAdd(ult,14)>fim)fim=anDateAdd(ult,14);if(fim>anDateAdd(hoje,140))fim=anDateAdd(hoje,140);
+  var nDias=anDateDiff(ini,fim)+1;if(nDias<14)nDias=14;
+  var dias=[];for(var i=0;i<nDias;i++){var d=anDateAdd(ini,i);dias.push({data:d,real:null,est:0,fonte:'',fut:d>hoje});}
+  var idx={};dias.forEach(function(x,i){idx[x.data]=i;});
+  // carga real (PSE × min)
+  var reais={};
+  if(v.ki){var nPast=anDateDiff(ini,hoje)+1;if(nPast>0)kkCargaDias(v.ki,hoje,nPast).forEach(function(d){if(d.srpe>0)reais[d.data]=d.srpe;});}
+  else{var ids={},porT={};sess.forEach(function(s){ids[s.id]=s;});
+    (D.avaliacoesSerie||[]).forEach(function(a){if(!a.data||!a.rpe||!a.sessaoId||!ids[a.sessaoId]||a.data>hoje)return;var c=(parseInt(a.rpe,10)||0)*(parseInt(a.duracaoMin,10)||90);if(!porT[a.sessaoId]||porT[a.sessaoId].c<c)porT[a.sessaoId]={c:c,d:a.data};});
+    Object.keys(porT).forEach(function(k){reais[porT[k].d]=(reais[porT[k].d]||0)+porT[k].c;});}
+  // estimativa pelas sessões (passadas sem PSE e futuras)
+  var estDia={},pares=[];
+  sess.forEach(function(s){if(idx[s.data]==null)return;if(v.ki&&typeof kkFaltou==='function'&&s.data<=hoje&&kkFaltou(s,v.ki.nad.id))return;var e=fmEstSessao(s);if(e)estDia[s.data]=(estDia[s.data]||0)+e;});
+  Object.keys(reais).forEach(function(d){if(estDia[d])pares.push(reais[d]/estDia[d]);});
+  pares.sort(function(a,b){return a-b;});
+  var k=pares.length>=5?Math.max(0.5,Math.min(2,pares[Math.floor(pares.length/2)])):1;
+  dias.forEach(function(x){
+    if(!x.fut&&reais[x.data]!=null){x.real=reais[x.data];x.fonte='pse';return;}
+    if(estDia[x.data]){x.est=estDia[x.data]*k;x.fonte=x.fut?'plano':'estimada';return;}
+    if(x.fut){var dd=anDinDia(v.key,x.data),e=0;if(dd){['m','t'].forEach(function(p){e+=fmEstDin(anDinPer(dd,p));});}if(e){x.est=e*k;x.fonte='dinamica';}}
+  });
+  var ultP='';dias.forEach(function(x){if(x.fut&&x.est)ultP=x.data;});
+  return {ultPlano:ultP||hoje,dias:dias,ini:ini,fim:fim,hoje:hoje,k:k,nPares:pares.length,comps:comps.filter(function(c){return c.data<=fim;}),ca:ca,base:anDateDiff(ini,hoje)+1};
+}
+function fmModelo(S,mod){
+  var c=0,a=0,kc=1/FM.cfg.ctl,ka=1/FM.cfg.atl,i=0;
+  return S.dias.map(function(x){i++;
+    var L=x.real!=null?x.real:x.est;if(mod)L=mod(x,L);
+    var tsbAbs=c-a,tsb=(i>14&&c>=20)?Math.max(-99,Math.min(99,tsbAbs/c*100)):null; c=c+(L-c)*kc; a=a+(L-a)*ka;
+    return {data:x.data,L:L,ctl:c,atl:a,tsb:tsb,tsbAbs:tsbAbs,fut:x.fut,fonte:x.fonte};
+  });
+}
+function fmEstado(t){if(t==null)return '';if(t<-30)return '🔴 muito cansado';if(t<-10)return '🟠 a acumular (cansado)';if(t<5)return '🟡 neutro';if(t<=25)return '🟢 fresco — bom para competir';return '🔵 muito descansado (perde forma)';}
+function fmPct(t){if(t==null)return '—';return (t>0?'+':'')+Math.round(t)+'%';}
+function fmTaperMod(S,compData,dias,pct){var ini=anDateAdd(compData,-dias);return function(x,L){return (x.fut&&x.data>=ini&&x.data<compData)?L*(1-pct/100):L;};}
+function fmNoDia(M,iso){for(var i=0;i<M.length;i++)if(M[i].data===iso)return M[i];return null;}
+function fmSugerirPct(S,compData,dias){var best=null;for(var p=0;p<=70;p+=5){var M=fmModelo(S,fmTaperMod(S,compData,dias,p)),d=fmNoDia(M,compData);if(!d)return null;if(d.tsb==null)return null;if(best==null||Math.abs(d.tsb-15)<Math.abs(best.t-15))best={p:p,t:d.tsb};}return best;}
+// ── gráfico (SVG, um eixo por painel) ──
+function fmGrafico(M,Ms,S){
+  var cw=(gi('fmBody')&&gi('fmBody').clientWidth)||980,W=Math.max(340,Math.min(1200,cw-14)),mob=W<600,H1=mob?170:230,H2=mob?90:110,pl=mob?34:44,pr=10,pt=14,gap=26,n=M.length;if(!n)return '';
+  var maxY=10;M.concat(Ms||[]).forEach(function(d){maxY=Math.max(maxY,d.ctl,d.atl);});maxY=Math.ceil(maxY/50)*50;
+  var tsb=M.concat(Ms||[]).map(function(d){return d.tsb;}).filter(function(v){return v!=null;});if(!tsb.length)tsb=[0];
+  var tMax=Math.min(60,Math.max(30,Math.max.apply(null,tsb))),tMin=Math.max(-60,Math.min(-20,Math.min.apply(null,tsb)));
+  tMax=Math.ceil(tMax/10)*10;tMin=Math.floor(tMin/10)*10;
+  var X=function(i){return pl+(W-pl-pr)*i/Math.max(1,n-1);},Y=function(v){return pt+H1*(1-v/maxY);},y2t=pt+H1+gap,Y2=function(v){return y2t+H2*(tMax-v)/(tMax-tMin);};
+  var path=function(arr,key){var o='',pen=false;arr.forEach(function(d,i){var v=key==='tsb'?d.tsb:d[key];if(v==null){pen=false;return;}if(key==='tsb')v=Math.max(tMin,Math.min(tMax,v));o+=(pen?'L':'M')+X(i).toFixed(1)+' '+(key==='tsb'?Y2(v):Y(v)).toFixed(1);pen=true;});return o;};
+  var iH=M.findIndex(function(d){return d.fut;});if(iH<0)iH=n-1;
+  var h='<svg viewBox="0 0 '+W+' '+(y2t+H2+28)+'" width="'+W+'" class="fm-svg" role="img" aria-label="Forma, fadiga e frescura">';
+  // grelha
+  for(var g=0;g<=4;g++){var v=maxY*g/4,yy=Y(v);h+='<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+yy+'" y2="'+yy+'" class="fm-grid"/><text x="'+(pl-6)+'" y="'+(yy+4)+'" class="fm-ax" text-anchor="end">'+Math.round(v)+'</text>';}
+  [tMax,0,tMin].forEach(function(v){var yy=Y2(v);h+='<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+yy+'" y2="'+yy+'" class="'+(v===0?'fm-zero':'fm-grid')+'"/><text x="'+(pl-6)+'" y="'+(yy+4)+'" class="fm-ax" text-anchor="end">'+(v>0?'+':'')+v+'%</text>';});
+  // faixa "fresco" (+5 a +25)
+  h+='<rect x="'+pl+'" y="'+Y2(Math.min(25,tMax))+'" width="'+(W-pl-pr)+'" height="'+Math.max(0,Y2(5)-Y2(Math.min(25,tMax)))+'" class="fm-band"/>';
+  // futuro sombreado + linha de hoje
+  h+='<rect x="'+X(iH)+'" y="'+pt+'" width="'+(W-pr-X(iH))+'" height="'+(y2t+H2-pt)+'" class="fm-fut"/>';
+  h+='<line x1="'+X(iH)+'" x2="'+X(iH)+'" y1="'+pt+'" y2="'+(y2t+H2)+'" class="fm-hoje"/><text x="'+(X(iH)+4)+'" y="'+(pt+10)+'" class="fm-ax">hoje</text>';
+  // meses
+  M.forEach(function(d,i){if(d.data.slice(8)==='01'){h+='<text x="'+X(i)+'" y="'+(y2t+H2+18)+'" class="fm-ax" text-anchor="middle">'+MS[+d.data.slice(5,7)-1].toLowerCase()+'</text>';}});
+  // carga diária (barras finas)
+  var maxL=Math.max(1,Math.max.apply(null,M.map(function(d){return d.L;})));
+  M.forEach(function(d,i){if(!d.L)return;var bh=Math.min(H1*0.35,H1*0.35*d.L/maxL);h+='<rect x="'+(X(i)-1)+'" y="'+(pt+H1-bh)+'" width="2" height="'+bh+'" class="fm-load'+(d.fut?' f':'')+'"/>';});
+  // competições
+  var lastLx=-999;(S.comps||[]).forEach(function(c){var i=M.findIndex(function(d){return d.data===c.data;});if(i<0)return;var alvo=S.ca&&S.ca.nome&&String(c.nome).indexOf(S.ca.nome)>=0;
+    h+='<line x1="'+X(i)+'" x2="'+X(i)+'" y1="'+pt+'" y2="'+(y2t+H2)+'" class="fm-comp'+(alvo?' alvo':'')+'"/>'+(X(i)-lastLx>(mob?95:150)?'<text x="'+(X(i)+3)+'" y="'+(pt+22)+'" class="fm-ct">🏆 '+fmE(String(c.nome).slice(0,mob?12:22))+'</text>':'');if(X(i)-lastLx>(mob?95:150))lastLx=X(i);});
+  // linhas
+  h+='<path d="'+path(M,'ctl')+'" class="fm-ctl"/><path d="'+path(M,'atl')+'" class="fm-atl"/>';
+  if(Ms)h+='<path d="'+path(Ms,'ctl')+'" class="fm-ctl s"/><path d="'+path(Ms,'atl')+'" class="fm-atl s"/>';
+  // frescura (área)
+  h+='<path d="'+path(M,'tsb')+'" class="fm-tsb"/>';if(Ms)h+='<path d="'+path(Ms,'tsb')+'" class="fm-tsb s"/>';
+  // rótulos diretos
+  var u=M[n-1];h+='<text x="'+(W-pr-2)+'" y="'+(Y(u.ctl)-6)+'" class="fm-lb c" text-anchor="end">Forma</text><text x="'+(W-pr-2)+'" y="'+(Y(u.atl)+14)+'" class="fm-lb a" text-anchor="end">Fadiga</text>';
+  h+='<text x="'+pl+'" y="'+(y2t-6)+'" class="fm-lb t">Frescura (% da forma)</text>';
+  h+='<rect x="'+pl+'" y="'+pt+'" width="'+(W-pl-pr)+'" height="'+(y2t+H2-pt)+'" fill="transparent" class="fm-hit"/>';
+  h+='<line class="fm-cross" x1="0" x2="0" y1="'+pt+'" y2="'+(y2t+H2)+'" style="display:none"/></svg>';
+  FM.geo={W:W,pl:pl,pr:pr,n:n};
+  return h;
+}
+function fmRender(){
+  var box=gi('fmBody');if(!box)return;
+  var vs=fmVistas();if(!FM.vista||!vs.some(function(v){return v.id===FM.vista;})){var ki=(typeof kkInfo==='function')?kkInfo():null;FM.vista=ki&&vs.some(function(v){return v.id==='kika';})?'kika':'abs';}
+  var v=vs.find(function(x){return x.id===FM.vista;}),S=fmSerie(v),M=fmModelo(S);
+  var hoje=fmNoDia(M,S.hoje)||M[M.length-1];
+  var futComps=S.comps.filter(function(c){return c.data>=S.hoje;}).sort(function(a,b){return a.data<b.data?-1:1;});
+  if(!FM.comp||!futComps.some(function(c){return c.id===FM.comp;})){var alvo=S.ca&&futComps.find(function(c){return String(c.nome).indexOf(S.ca.nome)>=0;});FM.comp=(alvo||futComps[0]||{}).id||'';}
+  var comp=futComps.find(function(c){return c.id===FM.comp;}),Ms=null,sug=null;
+  if(comp&&FM.taperPct>0)Ms=fmModelo(S,fmTaperMod(S,comp.data,FM.taperDias,FM.taperPct));
+  if(comp)sug=fmSugerirPct(S,comp.data,FM.taperDias);
+  FM.ult={S:S,M:M,Ms:Ms,v:v};
+  var nReal=S.dias.filter(function(d){return d.fonte==='pse';}).length,nEst=S.dias.filter(function(d){return !d.fut&&d.fonte==='estimada';}).length,nFut=S.dias.filter(function(d){return d.fut&&d.est;}).length;
+  var h='<div class="fm-tabs">'+vs.map(function(x){return '<button class="cc-pill'+(x.id===FM.vista?' on':'')+'" data-fm-v="'+x.id+'">'+fmE(x.lbl)+'</button>';}).join('')+'</div>';
+  h+='<div class="fm-kpis">'
+    +'<div class="fm-k"><div class="fm-kl">Forma hoje</div><div class="fm-kv c">'+Math.round(hoje.ctl)+'</div><div class="fm-ks">carga média · '+FM.cfg.ctl+' dias</div></div>'
+    +'<div class="fm-k"><div class="fm-kl">Fadiga hoje</div><div class="fm-kv a">'+Math.round(hoje.atl)+'</div><div class="fm-ks">carga média · '+FM.cfg.atl+' dias</div></div>'
+    +'<div class="fm-k"><div class="fm-kl">Frescura hoje</div><div class="fm-kv">'+fmPct(hoje.tsb)+'</div><div class="fm-ks">'+fmEstado(hoje.tsb)+'</div></div></div>';
+  h+='<div class="fm-chart">'+fmGrafico(M,Ms,S)+'<div class="fm-tip" style="display:none"></div></div>';
+  h+='<div class="fm-leg"><span><i class="c"></i>Forma</span><span><i class="a"></i>Fadiga</span><span><i class="t"></i>Frescura</span>'+(Ms?'<span><i class="s"></i>Com o taper simulado</span>':'')+'<span><i class="b"></i>Faixa ideal para competir (+5% a +25%)</span></div>';
+  // competições
+  if(futComps.length){
+    h+='<div class="cc-sec" style="margin-top:12px"><div class="cc-h" style="color:var(--a)">🏆 Como chegas às competições</div><div style="overflow-x:auto"><table class="fm-tb"><thead><tr><th>Competição</th><th>Data</th><th>Frescura</th><th>Forma</th><th>Estado previsto</th></tr></thead><tbody>'
+      +futComps.map(function(c){var d=fmNoDia(M,c.data);if(!d)return '';var alvo=S.ca&&String(c.nome).indexOf(S.ca.nome)>=0;
+        var semPlano=S.ultPlano&&c.data>anDateAdd(S.ultPlano,3);return '<tr><td>'+(alvo?'🎯 ':'')+fmE(c.nome)+'</td><td>'+fmE(fd(c.data))+'</td><td><b>'+fmPct(d.tsb)+'</b></td><td>'+Math.round(d.ctl)+'</td><td>'+fmEstado(d.tsb)+(semPlano?'<br><small style="color:#f5c842">⚠️ sem treinos planeados depois de '+fmE(fd(S.ultPlano))+': a previsão assume descanso</small>':'')+'</td></tr>';}).join('')
+      +'</tbody></table></div></div>';
+    // simulador de taper
+    var dS=Ms&&comp?fmNoDia(Ms,comp.data):null,dP=comp?fmNoDia(M,comp.data):null;
+    h+='<div class="cc-sec"><div class="cc-h" style="color:var(--a)">🧪 Simulador de taper</div>'
+      +'<div class="fm-sim"><label>Competição<select class="fse" id="fmComp">'+futComps.map(function(c){return '<option value="'+c.id+'"'+(c.id===FM.comp?' selected':'')+'>'+fmE(c.nome)+' · '+fmE(fd(c.data))+'</option>';}).join('')+'</select></label>'
+      +'<label>Taper de<select class="fse" id="fmDias">'+[7,10,14,21].map(function(n){return '<option'+(n===FM.taperDias?' selected':'')+' value="'+n+'">'+n+' dias</option>';}).join('')+'</select></label>'
+      +'<label style="flex:1;min-width:200px">Reduzir a carga em <b id="fmPctV">'+FM.taperPct+'%</b><input type="range" min="0" max="70" step="5" id="fmPct" value="'+FM.taperPct+'"></label></div>'
+      +(dP?'<div class="cc-info">Com o planeado: frescura <b>'+fmPct(dP.tsb)+'</b> no dia da prova ('+fmEstado(dP.tsb)+').'
+        +(dS?' Com −'+FM.taperPct+'% nos últimos '+FM.taperDias+' dias: <b>'+fmPct(dS.tsb)+'</b> ('+fmEstado(dS.tsb)+'), forma '+Math.round(dS.ctl)+' (−'+Math.max(0,Math.round(dP.ctl-dS.ctl))+').':'')
+        +(sug?'<br>💡 Para chegar com frescura ≈ +15% com '+FM.taperDias+' dias de taper: reduzir cerca de <b>'+sug.p+'%</b>'+(sug.p===0?' (o planeado já chega lá)':'')+'. <a href="#" id="fmAplSug" data-p="'+sug.p+'" style="color:var(--a)">Simular</a>':'')+'</div>':'')
+      +'</div>';
+  }else h+='<div class="cc-info">Não há competições futuras no calendário (separador Competições). A curva mostra a previsão das próximas 8 semanas.</div>';
+  // de onde vêm os dados
+  h+='<details class="fm-det"><summary>Como é calculado · dados usados</summary><div class="cc-info" style="margin-top:8px">'
+    +'<b>Carga diária</b> = PSE × minutos do treino: <b>'+nReal+'</b> dias com PSE registada'+(nEst?', '+nEst+' dias passados estimados pelo plano (sem PSE)':'')+'; <b>'+nFut+'</b> dias futuros previstos pelos treinos planeados ou, sem treino, pela Dinâmica Semanal.'
+    +' A estimativa usa a intensidade e o volume do treino'+(S.nPares>=5?' e foi calibrada com '+S.nPares+' treinos que têm PSE (fator '+S.k.toFixed(2)+')':' (ainda sem treinos suficientes com PSE para calibrar)')+'.<br>'
+    +'<b>Forma</b> = média exponencial dos últimos '+FM.cfg.ctl+' dias; <b>Fadiga</b> = dos últimos '+FM.cfg.atl+' dias; <b>Frescura</b> = (forma − fadiga do dia anterior) em % da forma: abaixo de −10% a acumular, +5% a +25% fresco para competir, acima de +25% demasiado descansado.'
+    +(S.base<FM.cfg.ctl?'<br>⚠️ A época tem só '+S.base+' dias de dados: a forma ainda está a "encher" e fica subestimada até ~'+FM.cfg.ctl+' dias.':'')
+    +'<br>É um modelo indicativo: confirma sempre com o que vês na água e com o bem-estar.</div>'
+    +'<div class="fm-sim" style="margin-top:6px"><label>Dias da forma<input class="fi" type="number" min="21" max="60" id="fmCtl" value="'+FM.cfg.ctl+'"></label><label>Dias da fadiga<input class="fi" type="number" min="3" max="14" id="fmAtl" value="'+FM.cfg.atl+'"></label></div></details>';
+  box.innerHTML=h;
+  var su=gi('fmSub');if(su)su.textContent=v.lbl.replace(/^\S+\s/,'')+' · época '+cs+' · '+fd(S.ini)+' a '+fd(S.fim);
+}
+function fmTip(ev){
+  var svg=ev.currentTarget,g=FM.geo,U=FM.ult;if(!g||!U)return;
+  var r=svg.getBoundingClientRect(),x=((ev.touches?ev.touches[0].clientX:ev.clientX)-r.left)*g.W/r.width;
+  var i=Math.round((x-g.pl)/(g.W-g.pl-g.pr)*(g.n-1));if(i<0||i>=g.n)return;
+  var d=U.M[i],ds=U.Ms?U.Ms[i]:null,cr=svg.querySelector('.fm-cross'),xi=g.pl+(g.W-g.pl-g.pr)*i/Math.max(1,g.n-1);
+  cr.setAttribute('x1',xi);cr.setAttribute('x2',xi);cr.style.display='';
+  var tip=svg.parentNode.querySelector('.fm-tip'),src={pse:'PSE registada',estimada:'estimada pelo plano',plano:'treino planeado',dinamica:'Dinâmica Semanal'}[d.fonte]||'sem treino';
+  tip.innerHTML='<b>'+fmE(fd(d.data))+'</b>'+(d.fut?' · previsão':'')+'<br>Carga '+Math.round(d.L)+' <small>('+src+')</small><br>Forma '+Math.round(d.ctl)+' · Fadiga '+Math.round(d.atl)+'<br>Frescura <b>'+fmPct(d.tsb)+'</b>'+(ds?'<br><small>com taper: '+fmPct(ds.tsb)+'</small>':'');
+  tip.style.display='';var px=xi/g.W*r.width;tip.style.left=Math.min(r.width-170,Math.max(0,px+10))+'px';tip.style.top='8px';
+}
+function fmExportPDF(){
+  if(!gi('fmBody')||!gi('fmBody').innerHTML){fmRender();}
+  var v=FM.ult&&FM.ult.v;
+  xpExportar({el:gi('fmBody'),titulo:'Previsão de forma · '+(v?v.lbl.replace(/^\S+\s/,''):''),sub:'modelo forma–fadiga ('+FM.cfg.ctl+'/'+FM.cfg.atl+' dias)'});
+}
+(function fmInit(){
+  function wire(){
+    if(gi('pg-forma'))return;
+    // página e entrada no menu (a seguir a Análise & Próxima Série)
+    var ref=gi('pg-analise')||document.querySelector('.pg');
+    var pg=document.createElement('div');pg.className='pg';pg.id='pg-forma';
+    pg.innerHTML='<div class="sh"><div><div class="st">📈 Previsão de forma</div><div class="su" id="fmSub">Forma, fadiga e frescura · modelo forma–fadiga</div></div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn bp bs" id="fmPDF">🖨️ PDF</button><button class="btn bs" id="fmWord" style="background:#2563eb;color:#fff">📝 Word</button></div></div><div id="fmBody"></div>';
+    ref.parentNode.insertBefore(pg,ref.nextSibling);
+    var na=gi('nv-analise');
+    if(na&&!gi('nv-forma')){var ni=document.createElement('div');ni.className='ni';ni.id='nv-forma';ni.setAttribute('data-go','forma');ni.textContent='📈 Previsão de Forma';na.parentNode.insertBefore(ni,na.nextSibling);ni.addEventListener('click',function(){go('forma');});}
+    var og=go;go=function(page){var r=og.apply(this,arguments);if(page==='forma'){gi('TT').textContent='Previsão de Forma';try{fmRender();}catch(e){console.error(e);toast('Erro: '+e.message,'error');}}return r;};
+    var st=document.createElement('style');st.textContent=
+      '.fm-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}.fm-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:12px}'
+      +'.fm-k{background:var(--m);border:1px solid var(--b);border-radius:12px;padding:10px 12px}.fm-kl{font-size:11px;color:var(--wd);text-transform:uppercase;letter-spacing:.06em}.fm-kv{font-size:26px;font-weight:700;font-family:Syne,sans-serif}.fm-kv.c{color:#00c2ff}.fm-kv.a{color:#ff7ab6}.fm-ks{font-size:12px;color:var(--wd)}'
+      +'.fm-chart{position:relative;background:var(--m);border:1px solid var(--b);border-radius:12px;padding:6px}.fm-svg{max-width:100%;height:auto;display:block;touch-action:pan-y}'
+      +'.fm-grid{stroke:rgba(240,246,255,.08)}.fm-zero{stroke:rgba(240,246,255,.35)}.fm-ax{fill:rgba(240,246,255,.55);font-size:11px}.fm-band{fill:rgba(0,229,160,.10)}.fm-fut{fill:rgba(240,246,255,.035)}'
+      +'.fm-hoje{stroke:rgba(240,246,255,.5);stroke-dasharray:3 3}.fm-comp{stroke:#f5c842;stroke-width:1;stroke-dasharray:2 3}.fm-comp.alvo{stroke-width:2;stroke-dasharray:none}.fm-ct{fill:#f5c842;font-size:10.5px}'
+      +'.fm-load{fill:rgba(240,246,255,.22)}.fm-load.f{fill:rgba(240,246,255,.12)}'
+      +'.fm-ctl{fill:none;stroke:#00c2ff;stroke-width:2.2}.fm-atl{fill:none;stroke:#ff7ab6;stroke-width:1.8}.fm-tsb{fill:none;stroke:#00e5a0;stroke-width:2}.s{stroke-dasharray:5 4;opacity:.9}'
+      +'.fm-lb{font-size:11.5px;font-weight:700}.fm-lb.c{fill:#00c2ff}.fm-lb.a{fill:#ff7ab6}.fm-lb.t{fill:#00e5a0}.fm-cross{stroke:rgba(240,246,255,.6)}'
+      +'.fm-tip{position:absolute;background:#0a1628;border:1px solid var(--b);border-radius:8px;padding:6px 8px;font-size:12px;pointer-events:none;min-width:150px;line-height:1.4}'
+      +'.fm-leg{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--wd);margin:8px 2px}.fm-leg i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}.fm-leg i.c{background:#00c2ff}.fm-leg i.a{background:#ff7ab6}.fm-leg i.t{background:#00e5a0}.fm-leg i.s{background:repeating-linear-gradient(90deg,#ccc 0 4px,transparent 4px 7px)}.fm-leg i.b{background:rgba(0,229,160,.35);height:8px}'
+      +'.fm-tb{width:100%;border-collapse:collapse;font-size:13px}.fm-tb th{text-align:left;color:var(--wd);font-weight:600;padding:6px;border-bottom:1px solid var(--b)}.fm-tb td{padding:6px;border-bottom:1px solid rgba(255,255,255,.06)}'
+      +'.fm-sim{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}.fm-sim label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--wd)}.fm-sim input[type=range]{width:100%}.fm-det summary{cursor:pointer;color:var(--wd);font-size:13px;margin-top:10px}'
+      +'@media(max-width:600px){.fm-tb th:nth-child(4),.fm-tb td:nth-child(4){display:none}.fm-tb{font-size:12px}.fm-kpis{grid-template-columns:1fr 1fr 1fr;gap:6px}.fm-kv{font-size:20px}.fm-k{padding:8px}.fm-ks{font-size:10.5px}}';
+    document.head.appendChild(st);
+    bon('fmPDF',function(){try{fmExportPDF();}catch(e){console.error(e);toast('Erro PDF: '+e.message,'error');}});
+    bon('fmWord',function(){try{exportPdfFuncToWord(fmExportPDF,'foca_previsao_forma');}catch(e){toast('Erro Word: '+e.message,'error');}});
+    if(typeof WA_ALVOS!=='undefined')WA_ALVOS.push({id:'fmPDF',fn:'fmExportPDF',nome:'previsao_forma',rot:'Previsão de forma',txt:1});
+    var b=gi('fmBody'),rz=null;window.addEventListener('resize',function(){if(!gi('pg-forma').classList.contains('on'))return;clearTimeout(rz);rz=setTimeout(fmRender,250);});
+    b.addEventListener('click',function(ev){var t=ev.target.closest('[data-fm-v],#fmAplSug');if(!t)return;ev.preventDefault();
+      if(t.id==='fmAplSug'){FM.taperPct=+t.getAttribute('data-p');fmRender();return;}
+      FM.vista=t.getAttribute('data-fm-v');FM.taperPct=0;fmGuardaPref();fmRender();});
+    b.addEventListener('change',function(ev){var t=ev.target;
+      if(t.id==='fmComp'){FM.comp=t.value;fmRender();}
+      else if(t.id==='fmDias'){FM.taperDias=+t.value;fmGuardaPref();fmRender();}
+      else if(t.id==='fmCtl'||t.id==='fmAtl'){var c=Math.max(21,Math.min(60,+gi('fmCtl').value||42)),a=Math.max(3,Math.min(14,+gi('fmAtl').value||7));FM.cfg={ctl:c,atl:a};fmGuardaPref();fmRender();}
+      else if(t.id==='fmPct'){FM.taperPct=+t.value;fmRender();}});
+    b.addEventListener('input',function(ev){if(ev.target.id==='fmPct'){var v=gi('fmPctV');if(v)v.textContent=ev.target.value+'%';}});
+    b.addEventListener('mousemove',function(ev){var s=ev.target.closest&&ev.target.closest('.fm-svg');if(s)fmTip({currentTarget:s,clientX:ev.clientX});},true);
+    b.addEventListener('touchmove',function(ev){var s=ev.target.closest&&ev.target.closest('.fm-svg');if(s)fmTip({currentTarget:s,touches:ev.touches});},{passive:true});
+    b.addEventListener('mouseleave',function(){var t=b.querySelector('.fm-tip'),c=b.querySelector('.fm-cross');if(t)t.style.display='none';if(c)c.style.display='none';},true);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wire);else wire();
+})();
+
+</script>
+<!-- FM-FIM -->
+<!-- AV-INICIO -->
+<script>
+// ═══ 📢 AVISOS À EQUIPA — separador próprio + cartão no Dashboard + envio por WhatsApp ═══
+// D.avisos = [{id, titulo, texto, dest:{todos:bool, equipas:[key], nadIds:[id]}, ini:'AAAA-MM-DD', fim:'AAAA-MM-DD'|'', fixo:bool, criado, alterado}]
+var AV_ED=null,AV_ARQ=false;
+function avE(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function avLista(){if(!D.avisos)D.avisos=[];return D.avisos;}
+function avHoje(){return (typeof mpHojeISO==='function')?mpHojeISO():new Date().toISOString().slice(0,10);}
+function avEstado(a,h){h=h||avHoje();if(a.ini&&a.ini>h)return 'prog';if(a.fim&&a.fim<h)return 'arq';return 'ativo';}
+function avEquipas(){var o=[];var sel=gi('ESC');if(sel)[].forEach.call(sel.querySelectorAll('option'),function(op){if(!op.value||op.disabled||op.value==='todos'||op.value.indexOf('ind:')===0)return;o.push({k:op.value,l:op.textContent.replace(/\s*\(\d+\)\s*$/,'')});});return o;}
+function avEqLbl(k){var e=avEquipas().find(function(x){return x.k===k;});if(e)return e.l.replace(/^\S+\s/,'');return (typeof getSessionEquipaLabel==='function')?getSessionEquipaLabel({equipa:k}):k;}
+function avDestLbl(a){var d=a.dest||{};if(d.todos)return 'Todos';var p=(d.equipas||[]).map(avEqLbl);
+  var n=(d.nadIds||[]).map(function(id){var x=(D.nadadores||[]).find(function(y){return y.id===id;});return x?x.nome:'';}).filter(Boolean);
+  if(n.length>3)p.push(n.length+' nadadores');else p=p.concat(n);return p.join(', ')||'—';}
+function avDataLbl(iso){if(!iso)return '';var p=iso.split('-');return (+p[2])+' '+MS[+p[1]-1].toLowerCase();}
+function avPeriodo(a){if(a.ini&&a.fim)return avDataLbl(a.ini)+' a '+avDataLbl(a.fim);if(a.fim)return 'até '+avDataLbl(a.fim);if(a.ini)return 'a partir de '+avDataLbl(a.ini);return 'sem data de fim';}
+// relevante para a equipa selecionada na barra lateral
+function avRelevante(a){var d=a.dest||{};if(d.todos||!currentEscalao||currentEscalao==='todos')return true;
+  if((d.equipas||[]).indexOf(currentEscalao)>=0)return true;
+  if((d.nadIds||[]).length&&typeof filterNad==='function'){var ids=filterNad(D.nadadores||[]).map(function(n){return n.id;});return d.nadIds.some(function(id){return ids.indexOf(id)>=0;});}
+  return false;}
+function avOrd(L){return L.slice().sort(function(a,b){return (b.fixo?1:0)-(a.fixo?1:0)||(b.ini||b.criado||'').localeCompare(a.ini||a.criado||'');});}
+function avTextoWA(a){var L=['📢 *'+a.titulo+'*'];if(a.texto&&a.texto.trim()){L.push('');L.push(a.texto.trim());}
+  var dl=avDestLbl(a),rod=[];if(dl&&dl!=='Todos'&&dl!=='—')rod.push('Para: '+dl);if(a.fim)rod.push('Válido até '+avDataLbl(a.fim));
+  if(rod.length){L.push('');L.push('_'+rod.join(' · ')+'_');}return L.join('\n');}
+function avWA(id){var a=avLista().find(function(x){return x.id===id;});if(!a)return;window.open('https://wa.me/?text='+encodeURIComponent(avTextoWA(a)),'_blank');}
+function avCartao(a,mini){
+  var est=avEstado(a),bd={ativo:'',prog:'<span class="badge by">programado · '+avDataLbl(a.ini)+'</span>',arq:'<span class="badge bq">arquivado</span>'}[est];
+  var txt=avE(a.texto||'').replace(/\n/g,'<br>');
+  if(mini)return '<div class="av-c'+(a.fixo?' fx':'')+'" data-av-go="1"><div class="av-t">'+(a.fixo?'📌 ':'')+avE(a.titulo)+'</div><div class="av-x">'+txt+'</div><div class="av-m">'+avE(avDestLbl(a))+' · '+avE(avPeriodo(a))+'</div></div>';
+  return '<div class="av-c'+(a.fixo?' fx':'')+(est==='arq'?' arq':'')+'"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap"><div class="av-t">'+(a.fixo?'📌 ':'')+avE(a.titulo)+' '+bd+'</div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn bs" data-av-wa="'+a.id+'" style="background:#25d366;color:#06301a;font-weight:700">💬 WhatsApp</button><button class="btn bg bs" data-av-ed="'+a.id+'">✏️</button><button class="btn bg bs" data-av-dup="'+a.id+'" title="Duplicar">⧉</button><button class="btn bd bs" data-av-del="'+a.id+'">🗑️</button></div></div>'
+    +'<div class="av-x">'+txt+'</div><div class="av-m">👥 '+avE(avDestLbl(a))+' · 📅 '+avE(avPeriodo(a))+'</div></div>';
+}
+function rAvisos(){
+  var box=gi('avBody');if(!box)return;var h=avHoje(),L=avOrd(avLista());
+  var at=L.filter(function(a){return avEstado(a,h)==='ativo';}),pr=L.filter(function(a){return avEstado(a,h)==='prog';}),ar=L.filter(function(a){return avEstado(a,h)==='arq';});
+  var s='';
+  s+='<div class="av-sec">Em vigor ('+at.length+')</div>'+(at.length?at.map(function(a){return avCartao(a);}).join(''):'<div class="av-vazio">Sem avisos em vigor. Carrega em <b>+ Novo aviso</b>.</div>');
+  if(pr.length)s+='<div class="av-sec">Programados ('+pr.length+')</div>'+pr.map(function(a){return avCartao(a);}).join('');
+  if(ar.length)s+='<div class="av-sec" style="cursor:pointer" data-av-arq="1">'+(AV_ARQ?'▾':'▸')+' Arquivo ('+ar.length+')</div>'+(AV_ARQ?ar.map(function(a){return avCartao(a);}).join(''):'');
+  box.innerHTML=s;
+}
+function avDash(){
+  var ref=gi('dshAniv')||gi('dshNextSession');if(!ref)return;
+  var box=gi('dshAvisos');if(!box){box=document.createElement('div');box.id='dshAvisos';ref.parentNode.insertBefore(box,ref);}
+  var L=avOrd(avLista().filter(function(a){return avEstado(a)==='ativo'&&avRelevante(a);}));
+  if(!L.length){box.innerHTML='';box.style.display='none';return;}
+  box.style.display='';
+  box.innerHTML='<div class="av-dash"><div class="av-dh">📢 Avisos <span>· '+L.length+'</span></div>'+L.slice(0,4).map(function(a){return avCartao(a,true);}).join('')+(L.length>4?'<div class="av-m" data-av-go="1" style="cursor:pointer">+ '+(L.length-4)+' avisos →</div>':'')+'</div>';
+}
+// ── editor ──
+function avAbrir(id,dup){
+  var a=id?avLista().find(function(x){return x.id===id;}):null;
+  AV_ED=a?JSON.parse(JSON.stringify(a)):{id:'',titulo:'',texto:'',dest:{todos:false,equipas:currentEscalao&&currentEscalao!=='todos'&&currentEscalao.indexOf('ind:')<0?[currentEscalao]:[],nadIds:[]},ini:avHoje(),fim:'',fixo:false};
+  if(dup){AV_ED.id='';AV_ED.titulo+=' (cópia)';AV_ED.ini=avHoje();}
+  gi('avMT').textContent=AV_ED.id?'✏️ Editar aviso':'📢 Novo aviso';avRenderEd();openM('mAviso');setTimeout(function(){var t=gi('avTit');if(t&&!AV_ED.id)t.focus();},50);
+}
+function avRenderEd(){
+  var A=AV_ED,eqs=avEquipas(),d=A.dest;
+  var nads=(D.nadadores||[]).filter(function(n){return !n.arquivado;}).sort(function(a,b){return a.nome.localeCompare(b.nome);});
+  gi('avEdBody').innerHTML='<div class="fg"><label class="fl">Título *</label><input class="fi" id="avTit" maxlength="90" value="'+avE(A.titulo)+'" placeholder="ex.: Treino de amanhã na piscina B"></div>'
+    +'<div class="fg"><label class="fl">Texto</label><textarea class="fta" id="avTxt" rows="5" placeholder="ex.: Amanhã o treino é às 7h00 na piscina B. Tragam palas e barbatanas.">'+avE(A.texto)+'</textarea></div>'
+    +'<div class="fl" style="margin-bottom:4px">Para quem</div><div class="av-ch">'
+    +'<button type="button" class="cc-pill'+(d.todos?' on':'')+'" data-av-todos="1">👥 Todos</button>'
+    +eqs.map(function(e){return '<button type="button" class="cc-pill'+(!d.todos&&d.equipas.indexOf(e.k)>=0?' on':'')+'" data-av-eq="'+avE(e.k)+'"'+(d.todos?' disabled style="opacity:.45"':'')+'>'+avE(e.l)+'</button>';}).join('')+'</div>'
+    +'<details class="av-nd"'+((d.nadIds||[]).length?' open':'')+'><summary>Ou nadadores escolhidos ('+(d.nadIds||[]).length+')</summary><input class="fi" id="avNdQ" placeholder="Procurar…" style="margin:6px 0"><div class="av-nl">'
+    +nads.map(function(n){return '<label data-nm="'+avE((n.nome||'').toLowerCase())+'"><input type="checkbox" data-av-nd="'+n.id+'"'+((d.nadIds||[]).indexOf(n.id)>=0?' checked':'')+(d.todos?' disabled':'')+'> '+avE(n.nome)+' <small>'+avE(n.escalao||'')+'</small></label>';}).join('')+'</div></details>'
+    +'<div class="av-g"><div class="fg"><label class="fl">Mostrar a partir de</label><input class="fi" type="date" id="avIni" value="'+avE(A.ini||'')+'"></div><div class="fg"><label class="fl">Até (fica no arquivo depois)</label><input class="fi" type="date" id="avFim" value="'+avE(A.fim||'')+'"></div></div>'
+    +'<label style="display:flex;gap:6px;align-items:center;font-size:13px;margin:4px 0 10px"><input type="checkbox" id="avFixo"'+(A.fixo?' checked':'')+'> 📌 Fixo no topo</label>'
+    +'<div class="fl">Pré-visualização no WhatsApp</div><div class="av-prev" id="avPrev"></div>';
+  avPrev();
+}
+function avLerEd(){var A=AV_ED;A.titulo=(gi('avTit').value||'').trim();A.texto=gi('avTxt').value||'';A.ini=gi('avIni').value||'';A.fim=gi('avFim').value||'';A.fixo=gi('avFixo').checked;}
+function avPrev(){var p=gi('avPrev');if(!p)return;avLerEd();var t=avTextoWA(Object.assign({},AV_ED,{titulo:AV_ED.titulo||'(título)'}));
+  p.innerHTML=avE(t).replace(/\*([^*\n]+)\*/g,'<b>$1</b>').replace(/_([^_\n]+)_/g,'<i>$1</i>').replace(/\n/g,'<br>');}
+function avGuardar(env){
+  avLerEd();var A=AV_ED;
+  if(!A.titulo){toast('Escreve o título do aviso','error');return;}
+  if(!A.dest.todos&&!A.dest.equipas.length&&!A.dest.nadIds.length){toast('Escolhe para quem é o aviso','error');return;}
+  if(A.fim&&A.ini&&A.fim<A.ini){toast('A data de fim é anterior à de início','error');return;}
+  var L=avLista(),agora=new Date().toISOString();
+  if(!A.id){A.id=gid();A.criado=agora;L.push(A);}else{var i=L.findIndex(function(x){return x.id===A.id;});A.alterado=agora;if(i>=0)L[i]=A;else L.push(A);}
+  save();closeM('mAviso');var id=A.id;AV_ED=null;rAvisos();avDash();toast('Aviso guardado','success');
+  if(env)avWA(id);
+}
+function avApagar(id){var a=avLista().find(function(x){return x.id===id;});if(!a)return;if(!confirm('Apagar o aviso «'+a.titulo+'»?'))return;D.avisos=avLista().filter(function(x){return x.id!==id;});save();rAvisos();avDash();toast('Aviso apagado','success');}
+(function avInit(){
+  function wire(){
+    if(gi('pg-avisos'))return;
+    var ref=gi('pg-convocatorias')||gi('pg-horarios');
+    var pg=document.createElement('div');pg.className='pg';pg.id='pg-avisos';
+    pg.innerHTML='<div class="sh"><div><div class="st">📢 Avisos à equipa</div><div class="su">Avisos para os atletas · enviados por WhatsApp · os que estão em vigor aparecem no Dashboard</div></div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn bp" id="avNovo">+ Novo aviso</button></div></div><div id="avBody"></div>';
+    ref.parentNode.insertBefore(pg,ref.nextSibling);
+    var md=document.createElement('div');md.className='mo';md.id='mAviso';
+    md.innerHTML='<div class="md mw" style="width:640px"><div class="mt" id="avMT">📢 Novo aviso</div><div id="avEdBody"></div><div class="ma"><button class="btn bg" id="avCancel">Cancelar</button><button class="btn bp" id="avSave">💾 Guardar</button><button class="btn" id="avSaveWA" style="background:#25d366;color:#06301a;font-weight:700">💾 Guardar e enviar 💬</button></div></div>';
+    document.body.appendChild(md);
+    var nc=gi('nv-convocatorias')||gi('nv-horarios');
+    if(nc&&!gi('nv-avisos')){var ni=document.createElement('div');ni.className='ni';ni.id='nv-avisos';ni.setAttribute('data-go','avisos');ni.textContent='📢 Avisos';nc.parentNode.insertBefore(ni,nc.nextSibling);ni.addEventListener('click',function(){go('avisos');});}
+    var og=go;go=function(page){var r=og.apply(this,arguments);if(page==='avisos'){gi('TT').textContent='Avisos';try{rAvisos();}catch(e){console.error(e);}}return r;};
+    if(typeof rDash==='function'&&!rDash.__av){var od=rDash;rDash=function(){var r=od.apply(this,arguments);try{avDash();}catch(e){console.warn(e);}return r;};rDash.__av=1;}
+    var st=document.createElement('style');st.textContent=
+      '.av-sec{font-family:Syne,sans-serif;font-weight:700;font-size:14px;margin:16px 0 8px;color:var(--wd)}.av-vazio{padding:16px;text-align:center;color:var(--wd);font-size:13px;border:1px dashed var(--b);border-radius:12px}'
+      +'.av-c{border:1px solid var(--b);border-left:4px solid var(--a);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:var(--m)}.av-c.fx{border-left-color:#f5c842}.av-c.arq{opacity:.6}'
+      +'.av-t{font-weight:700;font-size:14.5px}.av-x{font-size:13.5px;margin:6px 0;line-height:1.45}.av-m{font-size:11.5px;color:var(--wd)}'
+      +'.av-dash{border:1px solid rgba(245,200,66,.35);background:linear-gradient(135deg,rgba(245,200,66,.08),rgba(13,42,84,.35));border-radius:14px;padding:12px 14px;margin:14px 0}.av-dh{font-family:Syne,sans-serif;font-weight:700;font-size:13px;color:#f5c842;margin-bottom:8px}.av-dh span{color:var(--wd);font-weight:400;font-family:inherit}.av-dash .av-c{cursor:pointer;background:rgba(10,22,40,.45);margin-bottom:6px}'
+      +'.av-ch{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}.av-nd summary{cursor:pointer;font-size:12.5px;color:var(--wd)}.av-nl{max-height:200px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:2px 10px;font-size:13px}.av-nl small{color:var(--wd)}'
+      +'.av-g{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.av-prev{background:#0b141a;border-radius:10px;padding:10px 12px;font-size:13.5px;line-height:1.45;color:#e9edef;border:1px solid #1f2c33}'
+      +'@media(max-width:600px){.av-g{grid-template-columns:1fr}}';
+    document.head.appendChild(st);
+    bon('avNovo',function(){avAbrir(null);});
+    bon('avCancel',function(){closeM('mAviso');AV_ED=null;});
+    bon('avSave',function(){avGuardar(false);});
+    bon('avSaveWA',function(){avGuardar(true);});
+    document.addEventListener('click',function(ev){var t=ev.target.closest&&ev.target.closest('[data-av-wa],[data-av-ed],[data-av-dup],[data-av-del],[data-av-arq],[data-av-go]');if(!t)return;var v;
+      if((v=t.getAttribute('data-av-wa'))){avWA(v);return;}
+      if((v=t.getAttribute('data-av-ed'))){avAbrir(v);return;}
+      if((v=t.getAttribute('data-av-dup'))){avAbrir(v,true);return;}
+      if((v=t.getAttribute('data-av-del'))){avApagar(v);return;}
+      if(t.getAttribute('data-av-arq')){AV_ARQ=!AV_ARQ;rAvisos();return;}
+      if(t.getAttribute('data-av-go')){go('avisos');return;}
+    });
+    md.addEventListener('click',function(ev){var t=ev.target.closest('[data-av-todos],[data-av-eq]');if(!t||!AV_ED)return;avLerEd();var d=AV_ED.dest;
+      if(t.getAttribute('data-av-todos')){d.todos=!d.todos;}else{var k=t.getAttribute('data-av-eq'),i=d.equipas.indexOf(k);if(i>=0)d.equipas.splice(i,1);else d.equipas.push(k);}
+      avRenderEd();});
+    md.addEventListener('change',function(ev){var t=ev.target,id=t.getAttribute('data-av-nd');if(id&&AV_ED){var L=AV_ED.dest.nadIds,i=L.indexOf(id);if(t.checked&&i<0)L.push(id);if(!t.checked&&i>=0)L.splice(i,1);
+        var s=md.querySelector('.av-nd summary');if(s)s.textContent='Ou nadadores escolhidos ('+L.length+')';}avPrev();});
+    md.addEventListener('input',function(ev){if(ev.target.id==='avNdQ'){var q=ev.target.value.toLowerCase();md.querySelectorAll('.av-nl label').forEach(function(l){l.style.display=l.getAttribute('data-nm').indexOf(q)>=0?'':'none';});return;}avPrev();});
+    try{avDash();}catch(e){}
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wire);else wire();
+})();
+
+</script>
+<!-- AV-FIM -->
 <!-- RF-INICIO -->
 <script>
 // ═══ 📝 REFLEXÃO PÓS-COMPETIÇÃO (na convocatória de competição + ficha do nadador) ═══
