@@ -30500,8 +30500,11 @@ function fmSerie(v){
       if(cP>0&&cF>0){kPl=(cP/28)/(cF/fut.length*6/7);kPlModo='nivel';}}
     kPl=Math.max(0.05,Math.min(5,kPl));
     dias.forEach(function(x){if(x.pl)x.est=x.pl*kPl;});}
+  // incerteza da carga prevista, por origem: treinos criados = dispersão real/estimado dos treinos com PSE (≥8), senão 15%
+  var sg0=0.15;if(pares.length>=8){var dv=pares.map(function(r){return Math.abs(r/k-1);}).sort(function(a,b){return a-b;});sg0=Math.max(0.08,Math.min(0.4,dv[Math.floor(dv.length/2)]*1.48));}
+  var sig={plano:sg0,dinamica:Math.min(0.5,sg0+0.10),planeamento:Math.min(0.6,sg0+0.20)};
   var ultP='';dias.forEach(function(x){if(x.fut&&x.est)ultP=x.data;});
-  return {ultPlano:ultP||hoje,dias:dias,ini:ini,fim:fim,hoje:hoje,k:k,nPares:pares.length,kPl:kPl,kPlModo:kPlModo,comps:comps.filter(function(c){return c.data<=fim;}),ca:ca,base:anDateDiff(ini,hoje)+1};
+  return {ultPlano:ultP||hoje,dias:dias,ini:ini,fim:fim,hoje:hoje,k:k,nPares:pares.length,kPl:kPl,kPlModo:kPlModo,sig:sig,sigMedido:pares.length>=8,comps:comps.filter(function(c){return c.data<=fim;}),ca:ca,base:anDateDiff(ini,hoje)+1};
 }
 function fmModelo(S,mod){
   var c=0,a=0,kc=1/FM.cfg.ctl,ka=1/FM.cfg.atl,i=0;
@@ -30511,49 +30514,131 @@ function fmModelo(S,mod){
     return {data:x.data,L:L,ctl:c,atl:a,tsb:tsb,tsbAbs:tsbAbs,fut:x.fut,fonte:x.fonte};
   });
 }
+// ── 5 · margem de incerteza: frescura se a carga futura ficar acima / abaixo do previsto (± por origem) ──
+function fmBanda(S){
+  var f=function(sn){return function(x,L){return x.fut&&S.sig[x.fonte]?L*(1+sn*S.sig[x.fonte]):L;};};
+  var A=fmModelo(S,f(1)),B=fmModelo(S,f(-1));
+  return A.map(function(a,i){var b=B[i];if(!a.fut||a.tsb==null||b.tsb==null)return null;return {lo:Math.min(a.tsb,b.tsb),hi:Math.max(a.tsb,b.tsb)};});
+}
+function fmIntervalo(b){return b&&b.hi-b.lo>=1?'entre '+fmPct(b.lo)+' e '+fmPct(b.hi):'';}
+// ── 3 · alertas de carga por semana (2ª a domingo): subida brusca e monotonia ──
+function fmSemanas(S){
+  var W=[],cur=null;
+  S.dias.forEach(function(x){var seg=anDateAdd(x.data,-anDow(x.data));if(!cur||cur.ini!==seg){cur={ini:seg,fim:anDateAdd(seg,6),d:[],fut:false,temReal:false};W.push(cur);}
+    cur.d.push(x.real!=null?x.real:(x.est||0));if(x.fut)cur.fut=true;else cur.temReal=true;});
+  W=W.filter(function(w){return w.d.length===7;});
+  W.forEach(function(w,i){
+    w.carga=w.d.reduce(function(a,b){return a+b;},0);var m=w.carga/7,sd=Math.sqrt(w.d.reduce(function(a,b){return a+(b-m)*(b-m);},0)/7);
+    w.mono=w.carga>0?(sd>0?Math.min(9.9,m/sd):9.9):null;
+    var ant=W.slice(Math.max(0,i-4),i).map(function(q){return q.carga;}).filter(function(c){return c>0;});
+    w.media4=ant.length>=3?ant.reduce(function(a,b){return a+b;},0)/ant.length:null;
+    w.racio=w.media4?w.carga/w.media4:null;
+    w.tipo=w.ini>S.hoje?'fut':(w.fim<S.hoje?'pas':'atual');
+    w.av=[];
+    if(w.racio!=null&&w.racio>1.5)w.av.push({n:2,t:'subida brusca: +'+Math.round((w.racio-1)*100)+'% face às 4 semanas anteriores'});
+    else if(w.racio!=null&&w.racio>1.3)w.av.push({n:1,t:'subida rápida: +'+Math.round((w.racio-1)*100)+'% face às 4 semanas anteriores'});
+    if(w.mono!=null&&w.mono>2.5&&(!w.media4||w.carga>=0.9*w.media4))w.av.push({n:1,t:'semana monótona (dias todos parecidos, sem dia leve)'});
+    w.nivel=w.av.reduce(function(a,b){return Math.max(a,b.n);},0);
+  });
+  return W;
+}
+function fmSemLbl(w){var a=fd(w.ini).replace(/ \d{4}$/,''),b=fd(w.fim).replace(/ \d{4}$/,'');return a+' – '+b;}
+// ── 2 · bem-estar (questionário): últimos 3 dias contra o habitual de cada nadador ──
+function fmBeIds(v){if(v.ki)return [v.ki.nad.id];return (D.nadadores||[]).filter(function(n){return !n.arquivado&&n.escalao===v.key;}).map(function(n){return n.id;});}
+function fmBemEstar(v,hoje){
+  if(typeof beEntradas!=='function')return null;
+  var R={nads:[],serie:{},nResp:0},porDia={},ord={sem:0,verde:1,amarelo:2,vermelho:3};
+  fmBeIds(v).forEach(function(id){
+    var l=beEntradas(id);if(!l.length)return;var nad=(D.nadadores||[]).find(function(n){return n.id===id;})||{};
+    var dia={};l.forEach(function(e){var t=beTotal(e);if(t==null)return;(dia[e.data]=dia[e.data]||[]).push(t);});
+    Object.keys(dia).forEach(function(d){(porDia[d]=porDia[d]||[]).push(anMean(dia[d]));});
+    var rec=l.filter(function(e){var k=anDateDiff(e.data,hoje);return k>=0&&k<=2;});
+    var base=l.filter(function(e){var k=anDateDiff(e.data,hoje);return k>=3&&k<=30;}).map(beTotal);
+    var o={id:id,nome:nad.nome||'',n:rec.length,st:'sem',m3:null,mb:base.length>=5?anMean(base):null,mot:[]};
+    if(rec.length){
+      o.m3=anMean(rec.map(beTotal));var e=beEstado(id,rec[rec.length-1],l);o.st=e?e.st:'verde';
+      BE_ITENS.forEach(function(it){var m=anMean(rec.map(function(x){return beVal(x,it.k);}));if(m!=null&&m<=4)o.mot.push(it.lbl.toLowerCase()+' '+String(Math.round(m*10)/10).replace('.',',')+'/10');});
+      if(o.m3<=BE_VERM)o.st='vermelho';else if(o.m3<=BE_AMAR&&o.st==='verde')o.st='amarelo';
+      if(o.mb&&o.m3<=o.mb*0.85){if(o.st==='verde')o.st='amarelo';o.mot.push(Math.round((1-o.m3/o.mb)*100)+'% abaixo do habitual ('+String(Math.round(o.mb*10)/10).replace('.',',')+')');}
+      if(o.st!=='verde'&&!o.mot.length&&e&&e.motivo)o.mot.push(e.motivo);
+      R.nResp++;
+    }
+    R.nads.push(o);
+  });
+  if(!R.nads.length)return null;
+  Object.keys(porDia).forEach(function(d){R.serie[d]=anMean(porDia[d]);});
+  var com=R.nads.filter(function(o){return o.st!=='sem';});
+  R.m3=com.length?anMean(com.map(function(o){return o.m3;})):null;
+  if(!com.length)R.st='sem';
+  else if(v.ki)R.st=com[0].st;
+  else{var nV=com.filter(function(o){return o.st==='vermelho';}).length,nA=com.filter(function(o){return o.st!=='verde';}).length;R.st=nV*3>=com.length?'vermelho':(nA*3>=com.length?'amarelo':'verde');}
+  R.alerta=com.filter(function(o){return o.st!=='verde';}).sort(function(a,b){return ord[b.st]-ord[a.st];});
+  return R;
+}
+// leitura combinada: curva de carga + bem-estar
+function fmLeitura(tsb,B,ind){
+  if(!B)return '';
+  if(B.st==='sem')return 'ℹ️ Sem respostas de bem-estar nos últimos 3 dias: a leitura de hoje usa só a carga.';
+  var mau=B.st!=='verde',q=ind?(B.alerta[0]&&B.alerta[0].mot.length?' ('+B.alerta[0].mot.join('; ')+')':''):(B.alerta.length?': '+B.alerta.slice(0,6).map(function(o){return (BE_IC[o.st]||'')+' '+o.nome.split(' ')[0];}).join(', ')+(B.alerta.length>6?'…':''):'');
+  if(tsb==null)return mau?'⚠️ Bem-estar em baixo'+q+'.':'';
+  if(tsb>=5&&mau)return '⚠️ <b>A carga diz «fresco», mas o bem-estar está em baixo</b>'+q+'. Não contes com a frescura do gráfico: pode haver cansaço que a carga não explica (sono, escola, doença).';
+  if(tsb<-10&&mau)return '🔴 <b>Carga a acumular e bem-estar em baixo</b>'+q+'. Os dois sinais concordam: é altura de aliviar.';
+  if(tsb<-10&&!mau)return '🟢 A carga está a acumular, mas o bem-estar mantém-se bom: está a tolerar bem o trabalho.';
+  if(mau)return '⚠️ Bem-estar em baixo'+q+', com a carga em zona neutra: vigia os próximos dias.';
+  return '🟢 Carga e bem-estar concordam.';
+}
 function fmEstado(t){if(t==null)return '';if(t<-30)return '🔴 muito cansado';if(t<-10)return '🟠 a acumular (cansado)';if(t<5)return '🟡 neutro';if(t<=25)return '🟢 fresco — bom para competir';return '🔵 muito descansado (perde forma)';}
 function fmPct(t){if(t==null)return '—';return (t>0?'+':'')+Math.round(t)+'%';}
 function fmTaperMod(S,compData,dias,pct){var ini=anDateAdd(compData,-dias);return function(x,L){return (x.fut&&x.data>=ini&&x.data<compData)?L*(1-pct/100):L;};}
 function fmNoDia(M,iso){for(var i=0;i<M.length;i++)if(M[i].data===iso)return M[i];return null;}
 function fmSugerirPct(S,compData,dias){var best=null;for(var p=0;p<=70;p+=5){var M=fmModelo(S,fmTaperMod(S,compData,dias,p)),d=fmNoDia(M,compData);if(!d)return null;if(d.tsb==null)return null;if(best==null||Math.abs(d.tsb-15)<Math.abs(best.t-15))best={p:p,t:d.tsb};}return best;}
 // ── gráfico (SVG, um eixo por painel) ──
-function fmGrafico(M,Ms,S){
+function fmGrafico(M,Ms,S,Bd,Be){
   var cw=(gi('fmBody')&&gi('fmBody').clientWidth)||980,W=Math.max(340,Math.min(1200,cw-14)),mob=W<600,H1=mob?170:230,H2=mob?90:110,pl=mob?34:44,pr=10,pt=14,gap=26,n=M.length;if(!n)return '';
   var maxY=10;M.concat(Ms||[]).forEach(function(d){maxY=Math.max(maxY,d.ctl,d.atl);});maxY=Math.ceil(maxY/50)*50;
   var tsb=M.concat(Ms||[]).map(function(d){return d.tsb;}).filter(function(v){return v!=null;});if(!tsb.length)tsb=[0];
   var tMax=Math.min(60,Math.max(30,Math.max.apply(null,tsb))),tMin=Math.max(-60,Math.min(-20,Math.min.apply(null,tsb)));
   tMax=Math.ceil(tMax/10)*10;tMin=Math.floor(tMin/10)*10;
   var X=function(i){return pl+(W-pl-pr)*i/Math.max(1,n-1);},Y=function(v){return pt+H1*(1-v/maxY);},y2t=pt+H1+gap,Y2=function(v){return y2t+H2*(tMax-v)/(tMax-tMin);};
+  var beD=Be?M.map(function(d){return d.fut?null:(Be.serie[d.data]!=null?Be.serie[d.data]:null);}):[],temBe=beD.filter(function(x){return x!=null;}).length>=5,H3=mob?56:70,y3t=y2t+H2+gap+12,Y3=function(v){return y3t+H3*(1-v/BE_MAX);},yB=temBe?y3t+H3:y2t+H2;
   var path=function(arr,key){var o='',pen=false;arr.forEach(function(d,i){var v=key==='tsb'?d.tsb:d[key];if(v==null){pen=false;return;}if(key==='tsb')v=Math.max(tMin,Math.min(tMax,v));o+=(pen?'L':'M')+X(i).toFixed(1)+' '+(key==='tsb'?Y2(v):Y(v)).toFixed(1);pen=true;});return o;};
   var iH=M.findIndex(function(d){return d.fut;});if(iH<0)iH=n-1;
-  var h='<svg viewBox="0 0 '+W+' '+(y2t+H2+28)+'" width="'+W+'" class="fm-svg" role="img" aria-label="Forma, fadiga e frescura">';
+  var h='<svg viewBox="0 0 '+W+' '+(yB+28)+'" width="'+W+'" class="fm-svg" role="img" aria-label="Forma, fadiga e frescura">';
   // grelha
   for(var g=0;g<=4;g++){var v=maxY*g/4,yy=Y(v);h+='<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+yy+'" y2="'+yy+'" class="fm-grid"/><text x="'+(pl-6)+'" y="'+(yy+4)+'" class="fm-ax" text-anchor="end">'+Math.round(v)+'</text>';}
   [tMax,0,tMin].forEach(function(v){var yy=Y2(v);h+='<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+yy+'" y2="'+yy+'" class="'+(v===0?'fm-zero':'fm-grid')+'"/><text x="'+(pl-6)+'" y="'+(yy+4)+'" class="fm-ax" text-anchor="end">'+(v>0?'+':'')+v+'%</text>';});
   // faixa "fresco" (+5 a +25)
   h+='<rect x="'+pl+'" y="'+Y2(Math.min(25,tMax))+'" width="'+(W-pl-pr)+'" height="'+Math.max(0,Y2(5)-Y2(Math.min(25,tMax)))+'" class="fm-band"/>';
   // futuro sombreado + linha de hoje
-  h+='<rect x="'+X(iH)+'" y="'+pt+'" width="'+(W-pr-X(iH))+'" height="'+(y2t+H2-pt)+'" class="fm-fut"/>';
-  h+='<line x1="'+X(iH)+'" x2="'+X(iH)+'" y1="'+pt+'" y2="'+(y2t+H2)+'" class="fm-hoje"/><text x="'+(X(iH)+4)+'" y="'+(pt+10)+'" class="fm-ax">hoje</text>';
+  h+='<rect x="'+X(iH)+'" y="'+pt+'" width="'+(W-pr-X(iH))+'" height="'+(yB-pt)+'" class="fm-fut"/>';
+  h+='<line x1="'+X(iH)+'" x2="'+X(iH)+'" y1="'+pt+'" y2="'+yB+'" class="fm-hoje"/><text x="'+(X(iH)+4)+'" y="'+(pt+10)+'" class="fm-ax">hoje</text>';
   // meses
-  M.forEach(function(d,i){if(d.data.slice(8)==='01'){h+='<text x="'+X(i)+'" y="'+(y2t+H2+18)+'" class="fm-ax" text-anchor="middle">'+MS[+d.data.slice(5,7)-1].toLowerCase()+'</text>';}});
+  M.forEach(function(d,i){if(d.data.slice(8)==='01'){h+='<text x="'+X(i)+'" y="'+(yB+18)+'" class="fm-ax" text-anchor="middle">'+MS[+d.data.slice(5,7)-1].toLowerCase()+'</text>';}});
   // carga diária (barras finas)
   var maxL=Math.max(1,Math.max.apply(null,M.map(function(d){return d.L;})));
   M.forEach(function(d,i){if(!d.L)return;var bh=Math.min(H1*0.35,H1*0.35*d.L/maxL);h+='<rect x="'+(X(i)-1)+'" y="'+(pt+H1-bh)+'" width="2" height="'+bh+'" class="fm-load'+(d.fut?' f':'')+'"/>';});
   // competições
   var lastLx=-999;(S.comps||[]).forEach(function(c){var i=M.findIndex(function(d){return d.data===c.data;});if(i<0)return;var alvo=c.tipo==='CA'||(S.ca&&S.ca.nome&&String(c.nome).indexOf(S.ca.nome)>=0);
-    h+='<line x1="'+X(i)+'" x2="'+X(i)+'" y1="'+pt+'" y2="'+(y2t+H2)+'" class="fm-comp'+(alvo?' alvo':'')+'"/>'+(X(i)-lastLx>(mob?95:150)?'<text x="'+(X(i)+3)+'" y="'+(pt+22)+'" class="fm-ct">🏆 '+fmE(String(c.nome).slice(0,mob?12:22))+'</text>':'');if(X(i)-lastLx>(mob?95:150))lastLx=X(i);});
+    h+='<line x1="'+X(i)+'" x2="'+X(i)+'" y1="'+pt+'" y2="'+yB+'" class="fm-comp'+(alvo?' alvo':'')+'"/>'+(X(i)-lastLx>(mob?95:150)?'<text x="'+(X(i)+3)+'" y="'+(pt+22)+'" class="fm-ct">🏆 '+fmE(String(c.nome).slice(0,mob?12:22))+'</text>':'');if(X(i)-lastLx>(mob?95:150))lastLx=X(i);});
   // linhas
   h+='<path d="'+path(M,'ctl')+'" class="fm-ctl"/><path d="'+path(M,'atl')+'" class="fm-atl"/>';
   if(Ms)h+='<path d="'+path(Ms,'ctl')+'" class="fm-ctl s"/><path d="'+path(Ms,'atl')+'" class="fm-atl s"/>';
+  // margem de incerteza da frescura prevista
+  if(Bd){var up='',dn='',cl=function(v){return Y2(Math.max(tMin,Math.min(tMax,v))).toFixed(1);};Bd.forEach(function(b,i){if(!b)return;up+=(up?'L':'M')+X(i).toFixed(1)+' '+cl(b.hi);dn='L'+X(i).toFixed(1)+' '+cl(b.lo)+dn;});if(up)h+='<path d="'+up+dn+'Z" class="fm-unc"/>';}
+  // bem-estar (painel próprio, 0–50): pontos = média do dia; linha = média de 7 dias
+  if(temBe){
+    [0,BE_AMAR,BE_MAX].forEach(function(v){var yy=Y3(v);h+='<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+yy+'" y2="'+yy+'" class="'+(v===BE_AMAR?'fm-lim':'fm-grid')+'"/><text x="'+(pl-6)+'" y="'+(yy+4)+'" class="fm-ax" text-anchor="end">'+v+'</text>';});
+    var pb='',pen=false;beD.forEach(function(v,i){var jan=beD.slice(Math.max(0,i-6),i+1).filter(function(x){return x!=null;});if(M[i].fut||!jan.length||i>iH){pen=false;return;}var m=jan.reduce(function(a,b){return a+b;},0)/jan.length;pb+=(pen?'L':'M')+X(i).toFixed(1)+' '+Y3(m).toFixed(1);pen=true;if(v!=null)h+='<circle cx="'+X(i).toFixed(1)+'" cy="'+Y3(v).toFixed(1)+'" r="'+(mob?1.6:2.2)+'" class="fm-bed'+(v<=BE_VERM?' r':(v<=BE_AMAR?' y':''))+'"/>';});
+    h+='<path d="'+pb+'" class="fm-be"/><text x="'+pl+'" y="'+(y3t-6)+'" class="fm-lb b">Bem-estar (0–'+BE_MAX+')</text>';
+  }
   // frescura (área)
   h+='<path d="'+path(M,'tsb')+'" class="fm-tsb"/>';if(Ms)h+='<path d="'+path(Ms,'tsb')+'" class="fm-tsb s"/>';
   // rótulos diretos
   var u=M[n-1];h+='<text x="'+(W-pr-2)+'" y="'+(Y(u.ctl)-6)+'" class="fm-lb c" text-anchor="end">Forma</text><text x="'+(W-pr-2)+'" y="'+(Y(u.atl)+14)+'" class="fm-lb a" text-anchor="end">Fadiga</text>';
   h+='<text x="'+pl+'" y="'+(y2t-6)+'" class="fm-lb t">Frescura (% da forma)</text>';
-  h+='<rect x="'+pl+'" y="'+pt+'" width="'+(W-pl-pr)+'" height="'+(y2t+H2-pt)+'" fill="transparent" class="fm-hit"/>';
-  h+='<line class="fm-cross" x1="0" x2="0" y1="'+pt+'" y2="'+(y2t+H2)+'" style="display:none"/></svg>';
-  FM.geo={W:W,pl:pl,pr:pr,n:n};
+  h+='<rect x="'+pl+'" y="'+pt+'" width="'+(W-pl-pr)+'" height="'+(yB-pt)+'" fill="transparent" class="fm-hit"/>';
+  h+='<line class="fm-cross" x1="0" x2="0" y1="'+pt+'" y2="'+yB+'" style="display:none"/></svg>';
+  FM.geo={W:W,pl:pl,pr:pr,n:n};FM.beD=temBe?beD:null;
   return h;
 }
 function fmRender(){
@@ -30566,20 +30651,40 @@ function fmRender(){
   var comp=futComps.find(function(c){return c.id===FM.comp;}),Ms=null,sug=null;
   if(comp&&FM.taperPct>0)Ms=fmModelo(S,fmTaperMod(S,comp.data,FM.taperDias,FM.taperPct));
   if(comp)sug=fmSugerirPct(S,comp.data,FM.taperDias);
-  FM.ult={S:S,M:M,Ms:Ms,v:v};
+  var Bd=fmBanda(S),Be=fmBemEstar(v,S.hoje),Sem=fmSemanas(S);
+  FM.ult={S:S,M:M,Ms:Ms,v:v,Bd:Bd};
+  // respostas dadas pelos nadadores na página deles (lê uma vez por nadador e volta a desenhar)
+  FM.beReq=FM.beReq||{};var falta=fmBeIds(v).filter(function(id){return D.bemEstarLinks&&D.bemEstarLinks[id]&&!FM.beReq[id];});
+  if(falta.length&&typeof beCarregarExterno==='function'){var nF=falta.length,algum=false;falta.forEach(function(id){FM.beReq[id]=1;beCarregarExterno(id,function(ok){if(ok)algum=true;if(--nF===0&&algum&&gi('pg-forma')&&gi('pg-forma').classList.contains('on'))fmRender();});});}
   var nReal=S.dias.filter(function(d){return d.fonte==='pse';}).length,nEst=S.dias.filter(function(d){return !d.fut&&d.fonte==='estimada';}).length,nFut=S.dias.filter(function(d){return d.fut&&d.est;}).length;
   var h='<div class="fm-tabs">'+vs.map(function(x){return '<button class="cc-pill'+(x.id===FM.vista?' on':'')+'" data-fm-v="'+x.id+'">'+fmE(x.lbl)+'</button>';}).join('')+'</div>';
   h+='<div class="fm-kpis">'
     +'<div class="fm-k"><div class="fm-kl">Forma hoje</div><div class="fm-kv c">'+Math.round(hoje.ctl)+'</div><div class="fm-ks">carga média · '+FM.cfg.ctl+' dias</div></div>'
     +'<div class="fm-k"><div class="fm-kl">Fadiga hoje</div><div class="fm-kv a">'+Math.round(hoje.atl)+'</div><div class="fm-ks">carga média · '+FM.cfg.atl+' dias</div></div>'
-    +'<div class="fm-k"><div class="fm-kl">Frescura hoje</div><div class="fm-kv">'+fmPct(hoje.tsb)+'</div><div class="fm-ks">'+fmEstado(hoje.tsb)+'</div></div></div>';
-  h+='<div class="fm-chart">'+fmGrafico(M,Ms,S)+'<div class="fm-tip" style="display:none"></div></div>';
-  h+='<div class="fm-leg"><span><i class="c"></i>Forma</span><span><i class="a"></i>Fadiga</span><span><i class="t"></i>Frescura</span>'+(Ms?'<span><i class="s"></i>Com o taper simulado</span>':'')+'<span><i class="b"></i>Faixa ideal para competir (+5% a +25%)</span></div>';
+    +'<div class="fm-k"><div class="fm-kl">Frescura hoje</div><div class="fm-kv">'+fmPct(hoje.tsb)+'</div><div class="fm-ks">'+fmEstado(hoje.tsb)+'</div></div>'
+    +(Be?'<div class="fm-k"><div class="fm-kl">Bem-estar · 3 dias</div><div class="fm-kv">'+(Be.m3!=null?String(Math.round(Be.m3)).replace('.',',')+'<small>/'+BE_MAX+'</small>':'—')+'</div><div class="fm-ks">'+(Be.st==='sem'?'sem respostas recentes':(BE_IC[Be.st]+' '+({verde:'bom',amarelo:'em baixo',vermelho:'muito em baixo'}[Be.st]))+(v.ki?'':' · '+Be.nResp+' de '+Be.nads.length+' responderam'))+'</div></div>':'')+'</div>';
+  var lei=fmLeitura(hoje.tsb,Be,!!v.ki);if(lei)h+='<div class="cc-info fm-lei'+(Be&&Be.st!=='verde'&&Be.st!=='sem'?' w':'')+'">'+lei+'</div>';
+  h+='<div class="fm-chart">'+fmGrafico(M,Ms,S,Bd,Be)+'<div class="fm-tip" style="display:none"></div></div>';
+  h+='<div class="fm-leg"><span><i class="c"></i>Forma</span><span><i class="a"></i>Fadiga</span><span><i class="t"></i>Frescura</span>'+(Ms?'<span><i class="s"></i>Com o taper simulado</span>':'')+'<span><i class="b"></i>Faixa ideal para competir (+5% a +25%)</span><span><i class="u"></i>Margem de incerteza da previsão</span>'+(FM.beD?'<span><i class="e"></i>Bem-estar (média de 7 dias)</span>':'')+'</div>';
+  // alertas de carga
+  var jan=Sem.filter(function(w){return w.fim>=anDateAdd(S.hoje,-28)&&w.ini<=anDateAdd(S.hoje,28);}),avis=jan.filter(function(w){return w.nivel&&w.fim>=anDateAdd(S.hoje,-7);});
+  if(jan.length){
+    h+='<div class="cc-sec" style="margin-top:12px"><div class="cc-h" style="color:var(--a)">⚠️ Alertas de carga</div>'
+      +(avis.length?avis.map(function(w){return '<div class="cc-info fm-lei w">'+(w.nivel===2?'🔴':'🟡')+' <b>'+(w.tipo==='atual'?'Esta semana':(w.tipo==='fut'?'Semana de '+fmE(fmSemLbl(w))+' (prevista)':'Semana passada'))+':</b> '+w.av.map(function(a){return fmE(a.t);}).join(' · ')+'.</div>';}).join(''):'<div class="cc-info">✅ Sem alertas: nenhuma subida brusca nem semana monótona entre a semana passada e as próximas 4.</div>')
+      +'<div style="overflow-x:auto"><table class="fm-tb fm-ts"><thead><tr><th>Semana</th><th>Carga</th><th>vs. 4 sem. anteriores</th><th>Monotonia</th><th>Aviso</th></tr></thead><tbody>'
+      +jan.map(function(w){return '<tr'+(w.tipo==='atual'?' class="at"':'')+'><td>'+fmE(fmSemLbl(w))+(w.tipo==='atual'?' <small>(esta)</small>':(w.tipo==='fut'?' <small>(prevista)</small>':''))+'</td><td>'+(w.carga||w.tipo!=='fut'?Math.round(w.carga):'<small>sem plano</small>')+'</td><td>'+(w.racio!=null&&(w.carga||w.tipo!=='fut')?(w.racio>=1?'+':'−')+Math.abs(Math.round((w.racio-1)*100))+'%':'—')+'</td><td>'+(w.mono!=null?String(w.mono.toFixed(1)).replace('.',','):'—')+'</td><td>'+(w.nivel?(w.nivel===2?'🔴 ':'🟡 ')+'<span class="fm-avt">'+w.av.map(function(a){return fmE(a.t.split(':')[0].split(' (')[0]);}).join(' · ')+'</span>':(w.carga?'✅':'—'))+'</td></tr>';}).join('')
+      +'</tbody></table></div></div>';
+  }
+  // bem-estar por nadador (equipa)
+  if(Be&&!v.ki&&Be.alerta.length){
+    h+='<div class="cc-sec"><div class="cc-h" style="color:var(--a)">💚 Bem-estar em baixo · últimos 3 dias</div><div style="overflow-x:auto"><table class="fm-tb"><thead><tr><th>Nadador</th><th>Bem-estar</th><th>Motivo</th></tr></thead><tbody>'
+      +Be.alerta.map(function(o){return '<tr><td>'+BE_IC[o.st]+' '+fmE(o.nome)+'</td><td><b>'+String(Math.round(o.m3*10)/10).replace('.',',')+'</b>/'+BE_MAX+'</td><td>'+fmE(o.mot.join('; ')||'—')+'</td></tr>';}).join('')+'</tbody></table></div></div>';
+  }
   // competições
   if(futComps.length){
     h+='<div class="cc-sec" style="margin-top:12px"><div class="cc-h" style="color:var(--a)">🏆 Como chegas às competições</div><div style="overflow-x:auto"><table class="fm-tb"><thead><tr><th>Competição</th><th>Data</th><th>Frescura</th><th>Forma</th><th>Estado previsto</th></tr></thead><tbody>'
       +futComps.map(function(c){var d=fmNoDia(M,c.data);if(!d)return '';var alvo=c.tipo==='CA';
-        var semPlano=S.ultPlano&&c.data>anDateAdd(S.ultPlano,3);return '<tr><td>'+(alvo?'🎯 ':'')+fmE(c.nome)+(c.tipo?' <span class="badge '+({CA:'brd',CI:'bgo',CP:'bq'}[c.tipo])+'">'+c.tipo+'</span>':'')+'</td><td>'+(c.semana?'semana '+fmE(fd(c.semana.ini).replace(/ \d{4}$/,''))+' a '+fmE(fd(c.semana.fim)):fmE(fd(c.data)))+'</td><td><b>'+fmPct(d.tsb)+'</b></td><td>'+Math.round(d.ctl)+'</td><td>'+fmEstado(d.tsb)+(semPlano?'<br><small style="color:#f5c842">⚠️ sem treinos planeados depois de '+fmE(fd(S.ultPlano))+': a previsão assume descanso</small>':'')+'</td></tr>';}).join('')
+        var semPlano=S.ultPlano&&c.data>anDateAdd(S.ultPlano,3),iv=fmIntervalo(Bd[M.indexOf(d)]);return '<tr><td>'+(alvo?'🎯 ':'')+fmE(c.nome)+(c.tipo?' <span class="badge '+({CA:'brd',CI:'bgo',CP:'bq'}[c.tipo])+'">'+c.tipo+'</span>':'')+'</td><td>'+(c.semana?'semana '+fmE(fd(c.semana.ini).replace(/ \d{4}$/,''))+' a '+fmE(fd(c.semana.fim)):fmE(fd(c.data)))+'</td><td><b>'+fmPct(d.tsb)+'</b>'+(iv?'<br><small style="color:var(--wd)">'+iv+'</small>':'')+'</td><td>'+Math.round(d.ctl)+'</td><td>'+fmEstado(d.tsb)+(semPlano?'<br><small style="color:#f5c842">⚠️ sem treinos planeados depois de '+fmE(fd(S.ultPlano))+': a previsão assume descanso</small>':'')+'</td></tr>';}).join('')
       +'</tbody></table></div></div>';
     // simulador de taper
     var dS=Ms&&comp?fmNoDia(Ms,comp.data):null,dP=comp?fmNoDia(M,comp.data):null;
@@ -30598,7 +30703,10 @@ function fmRender(){
     +(S.kPlModo?' Os dias previstos pelo Planeamento usam a carga 1–10 de cada treino, posta à escala da carga real '+(S.kPlModo==='semanas'?'das semanas já feitas com Planeamento':'das últimas 4 semanas')+' (fator '+S.kPl.toFixed(2)+'): o que conta são as subidas e descidas planeadas.':'')+' A estimativa usa a intensidade e o volume do treino'+(S.nPares>=5?' e foi calibrada com '+S.nPares+' treinos que têm PSE (fator '+S.k.toFixed(2)+')':' (ainda sem treinos suficientes com PSE para calibrar)')+'.<br>'
     +'<b>Forma</b> = média exponencial dos últimos '+FM.cfg.ctl+' dias; <b>Fadiga</b> = dos últimos '+FM.cfg.atl+' dias; <b>Frescura</b> = (forma − fadiga do dia anterior) em % da forma: abaixo de −10% a acumular, +5% a +25% fresco para competir, acima de +25% demasiado descansado.'
     +(S.base<FM.cfg.ctl?'<br>⚠️ A época tem só '+S.base+' dias de dados: a forma ainda está a "encher" e fica subestimada até ~'+FM.cfg.ctl+' dias.':'')
-    +'<br>É um modelo indicativo: confirma sempre com o que vês na água e com o bem-estar.</div>'
+    +'<br><b>Margem de incerteza</b> (faixa verde clara no futuro): a frescura que resulta se a carga real ficar acima ou abaixo da prevista em ±'+Math.round(S.sig.plano*100)+'% nos treinos já criados'+(S.sigMedido?' (diferença típica entre o estimado e a PSE registada)':' (valor por omissão: ainda há poucos treinos com PSE para medir)')+', ±'+Math.round(S.sig.dinamica*100)+'% nos dias da Dinâmica Semanal e ±'+Math.round(S.sig.planeamento*100)+'% nos do Planeamento. Dias sem nada planeado contam como descanso e não têm margem.'
+    +'<br><b>Alertas de carga</b>: carga da semana (2ª a domingo) comparada com a média das 4 semanas anteriores: mais de +30% 🟡, mais de +50% 🔴. <b>Monotonia</b> = média diária ÷ variação entre os dias da semana: seis treinos iguais e um dia de descanso dão 2,4; o aviso 🟡 aparece acima de 2,5 (dias todos parecidos, sem dia leve nem descanso), numa semana que não seja leve.'
+    +'<br><b>Bem-estar</b>: média das respostas dos últimos 3 dias (sono, fadiga, dores, stress, humor; 0–'+BE_MAX+'), comparada com os limites do questionário ('+BE_AMAR+' 🟡 · '+BE_VERM+' 🔴) e com o habitual de cada nadador (15% abaixo da média dos 30 dias anteriores 🟡). Não altera os números da curva: serve para confirmar ou pôr em dúvida a frescura calculada pela carga.'
+    +'<br>É um modelo indicativo: confirma sempre com o que vês na água.</div>'
     +'<div class="fm-sim" style="margin-top:6px"><label>Dias da forma<input class="fi" type="number" min="21" max="60" id="fmCtl" value="'+FM.cfg.ctl+'"></label><label>Dias da fadiga<input class="fi" type="number" min="3" max="14" id="fmAtl" value="'+FM.cfg.atl+'"></label></div></details>';
   box.innerHTML=h;
   var su=gi('fmSub');if(su)su.textContent=v.lbl.replace(/^\S+\s/,'')+' · época '+cs+' · '+fd(S.ini)+' a '+fd(S.fim);
@@ -30610,7 +30718,7 @@ function fmTip(ev){
   var d=U.M[i],ds=U.Ms?U.Ms[i]:null,cr=svg.querySelector('.fm-cross'),xi=g.pl+(g.W-g.pl-g.pr)*i/Math.max(1,g.n-1);
   cr.setAttribute('x1',xi);cr.setAttribute('x2',xi);cr.style.display='';
   var tip=svg.parentNode.querySelector('.fm-tip'),src={pse:'PSE registada',estimada:'estimada pelo plano',plano:'treino planeado',dinamica:'Dinâmica Semanal',planeamento:'Planeamento (carga do treino)'}[d.fonte]||'sem treino';
-  tip.innerHTML='<b>'+fmE(fd(d.data))+'</b>'+(d.fut?' · previsão':'')+'<br>Carga '+Math.round(d.L)+' <small>('+src+')</small><br>Forma '+Math.round(d.ctl)+' · Fadiga '+Math.round(d.atl)+'<br>Frescura <b>'+fmPct(d.tsb)+'</b>'+(ds?'<br><small>com taper: '+fmPct(ds.tsb)+'</small>':'');
+  tip.innerHTML='<b>'+fmE(fd(d.data))+'</b>'+(d.fut?' · previsão':'')+'<br>Carga '+Math.round(d.L)+' <small>('+src+')</small><br>Forma '+Math.round(d.ctl)+' · Fadiga '+Math.round(d.atl)+'<br>Frescura <b>'+fmPct(d.tsb)+'</b>'+(U.Bd&&fmIntervalo(U.Bd[i])?' <small>('+fmIntervalo(U.Bd[i])+')</small>':'')+(FM.beD&&FM.beD[i]!=null?'<br>Bem-estar '+String(Math.round(FM.beD[i]*10)/10).replace('.',',')+'/'+BE_MAX:'')+(ds?'<br><small>com taper: '+fmPct(ds.tsb)+'</small>':'');
   tip.style.display='';var px=xi/g.W*r.width;tip.style.left=Math.min(r.width-170,Math.max(0,px+10))+'px';tip.style.top='8px';
 }
 function fmExportPDF(){
@@ -30631,7 +30739,7 @@ function fmExportPDF(){
     if(na&&!gi('nv-forma')){var ni=document.createElement('div');ni.className='ni';ni.id='nv-forma';ni.setAttribute('data-go','forma');ni.textContent='📈 Previsão de Forma';na.parentNode.insertBefore(ni,na.nextSibling);ni.addEventListener('click',function(){go('forma');});}
     var og=go;go=function(page){var r=og.apply(this,arguments);if(page==='forma'){gi('TT').textContent='Previsão de Forma';try{fmRender();}catch(e){console.error(e);toast('Erro: '+e.message,'error');}}return r;};
     var st=document.createElement('style');st.textContent=
-      '.fm-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}.fm-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:12px}'
+      '.fm-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}.fm-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px}.fm-kv small{font-size:13px;color:var(--wd);font-weight:400}.fm-lei{margin-bottom:10px}.fm-lei.w{border-left-color:#f5c842}.fm-unc{fill:rgba(0,229,160,.16)}.fm-be{fill:none;stroke:#a78bfa;stroke-width:2}.fm-bed{fill:#a78bfa;opacity:.55}.fm-bed.y{fill:#f5c842;opacity:.9}.fm-bed.r{fill:#ff4f6d;opacity:1}.fm-lim{stroke:rgba(245,200,66,.45);stroke-dasharray:3 3}.fm-lb.b{fill:#a78bfa}.fm-ts tr.at td{background:rgba(0,194,255,.07)}'
       +'.fm-k{background:var(--m);border:1px solid var(--b);border-radius:12px;padding:10px 12px}.fm-kl{font-size:11px;color:var(--wd);text-transform:uppercase;letter-spacing:.06em}.fm-kv{font-size:26px;font-weight:700;font-family:Syne,sans-serif}.fm-kv.c{color:#00c2ff}.fm-kv.a{color:#ff7ab6}.fm-ks{font-size:12px;color:var(--wd)}'
       +'.fm-chart{position:relative;background:var(--m);border:1px solid var(--b);border-radius:12px;padding:6px}.fm-svg{max-width:100%;height:auto;display:block;touch-action:pan-y}'
       +'.fm-grid{stroke:rgba(240,246,255,.08)}.fm-zero{stroke:rgba(240,246,255,.35)}.fm-ax{fill:rgba(240,246,255,.55);font-size:11px}.fm-band{fill:rgba(0,229,160,.10)}.fm-fut{fill:rgba(240,246,255,.035)}'
@@ -30640,10 +30748,10 @@ function fmExportPDF(){
       +'.fm-ctl{fill:none;stroke:#00c2ff;stroke-width:2.2}.fm-atl{fill:none;stroke:#ff7ab6;stroke-width:1.8}.fm-tsb{fill:none;stroke:#00e5a0;stroke-width:2}.s{stroke-dasharray:5 4;opacity:.9}'
       +'.fm-lb{font-size:11.5px;font-weight:700}.fm-lb.c{fill:#00c2ff}.fm-lb.a{fill:#ff7ab6}.fm-lb.t{fill:#00e5a0}.fm-cross{stroke:rgba(240,246,255,.6)}'
       +'.fm-tip{position:absolute;background:#0a1628;border:1px solid var(--b);border-radius:8px;padding:6px 8px;font-size:12px;pointer-events:none;min-width:150px;line-height:1.4}'
-      +'.fm-leg{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--wd);margin:8px 2px}.fm-leg i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}.fm-leg i.c{background:#00c2ff}.fm-leg i.a{background:#ff7ab6}.fm-leg i.t{background:#00e5a0}.fm-leg i.s{background:repeating-linear-gradient(90deg,#ccc 0 4px,transparent 4px 7px)}.fm-leg i.b{background:rgba(0,229,160,.35);height:8px}'
+      +'.fm-leg{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--wd);margin:8px 2px}.fm-leg i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}.fm-leg i.c{background:#00c2ff}.fm-leg i.a{background:#ff7ab6}.fm-leg i.t{background:#00e5a0}.fm-leg i.s{background:repeating-linear-gradient(90deg,#ccc 0 4px,transparent 4px 7px)}.fm-leg i.b{background:rgba(0,229,160,.35);height:8px}.fm-leg i.u{background:rgba(0,229,160,.16);height:8px;border:1px solid rgba(0,229,160,.4)}.fm-leg i.e{background:#a78bfa}'
       +'.fm-tb{width:100%;border-collapse:collapse;font-size:13px}.fm-tb th{text-align:left;color:var(--wd);font-weight:600;padding:6px;border-bottom:1px solid var(--b)}.fm-tb td{padding:6px;border-bottom:1px solid rgba(255,255,255,.06)}'
       +'.fm-sim{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}.fm-sim label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--wd)}.fm-sim input[type=range]{width:100%}.fm-det summary{cursor:pointer;color:var(--wd);font-size:13px;margin-top:10px}'
-      +'@media(max-width:600px){.fm-tb th:nth-child(4),.fm-tb td:nth-child(4){display:none}.fm-tb{font-size:12px}.fm-kpis{grid-template-columns:1fr 1fr 1fr;gap:6px}.fm-kv{font-size:20px}.fm-k{padding:8px}.fm-ks{font-size:10.5px}}';
+      +'@media(max-width:600px){.fm-tb th:nth-child(4),.fm-tb td:nth-child(4){display:none}.fm-tb{font-size:12px}.fm-kpis{grid-template-columns:1fr 1fr;gap:6px}.fm-ts th:nth-child(4),.fm-ts td:nth-child(4){display:table-cell}.fm-avt{display:none}.fm-ts th,.fm-ts td{padding:6px 4px}.fm-kv{font-size:20px}.fm-k{padding:8px}.fm-ks{font-size:10.5px}}';
     document.head.appendChild(st);
     bon('fmPDF',function(){try{fmExportPDF();}catch(e){console.error(e);toast('Erro PDF: '+e.message,'error');}});
     bon('fmWord',function(){try{exportPdfFuncToWord(fmExportPDF,'foca_previsao_forma');}catch(e){toast('Erro Word: '+e.message,'error');}});
@@ -30664,7 +30772,6 @@ function fmExportPDF(){
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wire);else wire();
 })();
-
 </script>
 <!-- FM-FIM -->
 </body>
