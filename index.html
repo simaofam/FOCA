@@ -28786,7 +28786,7 @@ function ccProvasEm(t){
     var gens=[];
     if(/femin|\bfem\b|senhoras|\bf\b/.test(cauda))gens.push('F');
     if(/mascul|\bmasc\b|homens|\bm\b/.test(cauda))gens.push('M');
-    if(/mist/.test(cauda)||/mist/.test(cab.slice(-12)))gens=['X'];
+    if(/mist/.test(cauda)||(!gens.length&&/mist/.test(cab.slice(-12))))gens=['X'];
     var nm=/(?:^|\s)(\d{1,3})\s*[.)\-–ºª:]{0,2}\s*(?:prova\s*)?(?:n\.?\s*[ºo]?\s*)?(?:estafeta\s*)?$/.exec(cab.slice(-22));
     var num=nm?+nm[1]:null;
     if(!gens.length)gens=[''];
@@ -28800,7 +28800,7 @@ var CC_RE_JORN=/(\d+)\s*[ªºa.°]{0,3}\s*jornada|jornada\s*(?:n\.?\s*[ºo]?\s*)
 function ccInterpretar(linhas){
   CC_ANO_DOC=null;
   linhas.some(function(L){var m=/(\d{1,2})\s*(?:de\s+)?(janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\s*(?:de\s+)?(20\d\d)/.exec(ccNorm(L));if(m){CC_ANO_DOC={ano:+m[3],mes:CC_MES[m[2].slice(0,3)]};return true;}});
-  var sess=[],cur=null,jorn=1,dataAtual='',viuSessao=false,soltas=[];
+  var sess=[],cur=null,jorn=1,dataAtual='',viuSessao=false,soltas=[],pend=null;
   // modo bloco (PDF com cabeçalhos de sessão): só o texto dentro dos blocos (\u0001) conta para horas e provas
   var modoBloco=linhas.some(function(L){return L.charAt(0)==='\u0001';});
   function nova(num,j){
@@ -28817,7 +28817,14 @@ function ccInterpretar(linhas){
       nova(+(sm[1]||sm[2]),jm?+(jm[1]||jm[2]):jorn);
       if(!cur.data)cur.data=datas.length?datas[0].iso:dataAtual;
     }
-    if(modoBloco&&!bloco&&!sm){if(datas.length&&(jm||!viuSessao))dataAtual=datas[0].iso;return;}
+    if(sm)pend=null;
+    if(modoBloco&&!bloco&&!sm){if(datas.length&&(jm||!viuSessao))dataAtual=datas[0].iso;
+      // "1ª JORNADA Sexta, 4 DEZ" seguida das horas sem «sessão»: é a 1.ª (e única) sessão dessa jornada
+      if(jm&&curta&&!horas.length)pend={j:jorn,data:datas.length?datas[0].iso:''};
+      else if(/^\s*\d{1,2}\s*[.)]\s/.test(L))pend=null;
+      else if(pend&&horas.some(function(h){return h.tipo;})){nova(1,pend.j);if(!cur.data)cur.data=pend.data;
+        horas.forEach(function(h){if(h.tipo==='abertura'){if(!cur.abertura)cur.abertura=h.hhmm;}else if(h.tipo==='aquec'){if(!cur.aquecReg)cur.aquecReg=h.hhmm;}else if(h.tipo==='inicio'){if(!cur.inicio)cur.inicio=h.hhmm;}});}
+      return;}
     if(datas.length){dataAtual=datas[0].iso;if(cur&&!cur.provas.length&&!sm)cur.data=cur.data||datas[0].iso;}
     if(cur&&horas.length){
       horas.forEach(function(h,hi){
@@ -28851,18 +28858,23 @@ function ccInterpretar(linhas){
 // (linha com prefixo \u0001). O bloco acaba no cabeçalho seguinte, num título numerado ("5. PARTICIPAÇÃO"),
 // numa linha só de jornada ou numa linha que atravessa as colunas.
 var CC_RE_ANC=/(\d+\s*[ªºa.°]{0,3}\s*jornada\b.{0,6}?)?(?:\d+\s*[ªºa.°]{0,3}\s*sess(?:ao|oes)\b|sessao\s*(?:n\.?\s*[ºo]?\s*)?\d+)/g;
+var CC_RE_JSO=/^\s*(\d+)\s*[ªºa.°]{0,3}\s*jornada\b/;
+function ccJuntaIts(its){var t='',x1=null,cw=5;its.forEach(function(it){var g=x1==null?0:it.x-x1;t+=(x1!=null&&(g>Math.max(1.5,cw*0.3)||(it.sp&&g>-1))?' ':'')+it.str;x1=it.x+it.w;cw=it.str.length?it.w/it.str.length:5;});return t;}
 function ccLinhasDeItens(items){
+  // espaços: um item só de espaços entre duas palavras conta como espaço, mesmo com as letras muito juntas
+  items.forEach(function(it,k){var pv=items[k-1];if(pv&&pv.str&&!pv.str.trim()&&Math.abs(pv.y-it.y)<=3)it.sp=true;if(/^\s/.test(it.str||''))it.sp=true;});
   var rows=[];
   items.filter(function(it){return it.str&&it.str.trim();}).forEach(function(it){
     var r=null;for(var i=0;i<rows.length;i++){if(Math.abs(rows[i].y-it.y)<=3){r=rows[i];break;}}
     if(!r){r={y:it.y,its:[]};rows.push(r);}r.its.push(it);
   });
   rows.sort(function(a,b){return b.y-a.y;});
+  function ehSec(t){return /^\s*\d{1,2}\s*[.)]\s*[A-ZÁÉÍÓÚÂÊÔÃÕÇ]{3,}/.test(t)||/^\s*(programa|hor[aá]rio)s?\b/i.test(t);}
   rows.forEach(function(r){
     r.its.sort(function(a,b){return a.x-b.x;});
     var segs=[],s=null;
     r.its.forEach(function(it){
-      if(s&&it.x-s.x1<=18){var pv=s.its[s.its.length-1],cw=pv.str.length?pv.w/pv.str.length:5,sp=it.x-s.x1>Math.max(1.5,cw*0.3)?' ':'';s.map.push({k:s.t.length+sp.length,it:it});s.t+=sp+it.str;s.x1=it.x+it.w;s.its.push(it);}
+      if(s&&it.x-s.x1<=18){var pv=s.its[s.its.length-1],cw=pv.str.length?pv.w/pv.str.length:5,g=it.x-s.x1,sp=(g>Math.max(1.5,cw*0.3)||(it.sp&&g>-1))?' ':'';s.map.push({k:s.t.length+sp.length,it:it});s.t+=sp+it.str;s.x1=it.x+it.w;s.its.push(it);}
       else{s={x0:it.x,x1:it.x+it.w,t:it.str,its:[it],map:[{k:0,it:it}]};segs.push(s);}
     });
     r.segs=segs;r.t=segs.map(function(q){return q.t;}).join('  ');
@@ -28880,29 +28892,46 @@ function ccLinhasDeItens(items){
         r.anc.push({x:x,t:txt,seg:q});
       });
     });
+    // jornada de sessão única ("1ª JORNADA") ao lado de cabeçalhos de sessão: conta como 1.ª sessão dessa jornada
+    if(r.anc.length)segs.forEach(function(q){var n=ccNorm(q.t),m=CC_RE_JSO.exec(n);
+      if(m&&!/sess/.test(n)&&n.split(/\s+/).length<=4&&!r.anc.some(function(a){return a.seg===q;}))r.anc.push({x:q.x0,t:q.t.trim()+' – 1ª sessão',seg:q});});
+    r.anc.sort(function(a,b){return a.x-b.x;});
   });
-  var anc=[];rows.forEach(function(r){r.anc.forEach(function(a){anc.push(a);});});
-  if(!anc.length)return rows.map(function(r){return r.t;});
-  // colunas: agrupa as âncoras pelo x
-  var xs=anc.map(function(a){return a.x;}).sort(function(a,b){return a-b;}),cl=[];
-  xs.forEach(function(x){if(!cl.length||x-cl[cl.length-1].x>60)cl.push({x:x,n:1});else{var c=cl[cl.length-1];c.x=(c.x*c.n+x)/(c.n+1);c.n++;}});
-  var bnd=[];for(var i=1;i<cl.length;i++)bnd.push(Math.max((cl[i-1].x+cl[i].x)/2,cl[i].x-35));
-  function col(x){var c=0;bnd.forEach(function(b){if(x>=b)c++;});return c;}
-  var units=[],ativo=bnd.map(function(){return null;}).concat([null]);
-  function fecha(){for(var c=0;c<ativo.length;c++)ativo[c]=null;}
-  rows.forEach(function(r){
-    var sec=/^\s*\d{1,2}\s*[.)]\s*[A-ZÁÉÍÓÚÂÊÔÃÕÇ]{3,}/.test(r.t)||/^\s*(programa|hor[aá]rio)s?\b/i.test(r.t);
+  if(!rows.some(function(r){return r.anc.length;}))return rows.map(function(r){return r.t;});
+  // linha de data/hora logo acima de uma linha de cabeçalhos ("4 DEZ 2026 – 16:00 …"): junta-se a cada cabeçalho
+  rows.forEach(function(r,ri){var pv=rows[ri-1];
+    if(r.anc.length&&pv&&!pv.anc.length&&!pv.pref&&pv.y-r.y<=22&&!ehSec(pv.t)&&!CC_RE_JORN.test(ccNorm(pv.t))&&(ccDatasEm(pv.t).length||ccHorasEm(pv.t).length)){pv.pref=true;r.prefRow=pv;}});
+  // fronteira entre duas colunas: o maior espaço vazio no texto por baixo dos cabeçalhos (cabeçalhos centrados ou alinhados)
+  function fronteira(ri,xa,xb){
+    var cov=[],yAnt=rows[ri].y;
+    for(var k=ri+1;k<rows.length&&k<=ri+14;k++){var q=rows[k];if(q.anc.length||ehSec(q.t)||CC_RE_JORN.test(ccNorm(q.t))||yAnt-q.y>60)break;yAnt=q.y;
+      q.its.forEach(function(it){if(it.w<=220)cov.push([it.x,it.x+it.w]);});}
+    var lo=xa+10,hi=xb+40,best=null;cov.sort(function(a,b){return a[0]-b[0];});
+    // o espaço vazio mais à direita que acaba antes do início do cabeçalho seguinte (+5): separa as colunas sem cortar uma coluna interna (ex.: Fem./Masc.)
+    var x=lo;cov.forEach(function(c){if(c[1]<=x)return;if(c[0]>x&&c[0]>lo){var a=Math.max(x,lo),b=Math.min(c[0],hi);if(b-a>=6&&b<=xb+5&&(!best||b>best[1]))best=[a,b];}x=Math.max(x,c[1]);});
+    return best?(best[0]+best[1])/2:Math.max((xa+xb)/2,xb-35);
+  }
+  var units=[],cs=null; // cs: colunas ativas {xs,bnd,ativo}
+  function col(x){var c=0;cs.bnd.forEach(function(b){if(x>=b)c++;});return c;}
+  rows.forEach(function(r,ri){
+    if(r.pref)return;
     var nr=ccNorm(r.t),soJorn=!r.anc.length&&CC_RE_JORN.test(nr)&&nr.split(/\s+/).length<=12;
-    var cruza=bnd.length&&r.its.some(function(it){return bnd.some(function(b){return it.x<b-20&&it.x+it.w>b+20;});});
-    if(!r.anc.length&&(sec||soJorn||cruza)){fecha();units.push({t:r.t});return;}
+    var cruza=cs&&cs.bnd.length&&r.its.some(function(it){return cs.bnd.some(function(b){return it.x<b-20&&it.x+it.w>b+20;});});
+    if(!r.anc.length&&(ehSec(r.t)||soJorn||cruza)){cs=null;units.push({t:r.t});return;}
     var usados=[];
-    r.anc.forEach(function(a){var c=col(a.x),u={cab:a.t,its:[]};ativo[c]=u;units.push(u);usados.push(a.seg);});
+    if(r.anc.length){
+      // mesmas colunas que as ativas? mantém-nas; senão começa uma nova tabela
+      var cabe=cs&&r.anc.every(function(a){return cs.xs.some(function(x){return Math.abs(x-a.x)<=60;});});
+      if(!cabe){var xs=r.anc.map(function(a){return a.x;}),bnd=[];for(var i=1;i<xs.length;i++)bnd.push(fronteira(ri,xs[i-1],xs[i]));cs={xs:xs,bnd:bnd,ativo:xs.map(function(){return null;})};}
+      var pref={};if(r.prefRow)r.prefRow.its.forEach(function(it){var c=col(it.x);(pref[c]=pref[c]||[]).push(it);});
+      r.anc.forEach(function(a){var c=col(a.x),p=pref[c]?ccJuntaIts(pref[c])+' · ':'',u={cab:p+a.t,its:[]};cs.ativo[c]=u;units.push(u);usados.push(a.seg);});
+    }
     var solto=[];
     r.segs.forEach(function(q){
       if(usados.indexOf(q)>=0)return;
-      q.its.forEach(function(it){var c=col(it.x);if(ativo[c])ativo[c].its.push(it);else solto.push(it);});
+      q.its.forEach(function(it){var c=cs?col(it.x):-1;if(cs&&cs.ativo[c])cs.ativo[c].its.push(it);else solto.push(it);});
     });
-    if(solto.length){var t='',x1=null,cw=5;solto.forEach(function(it){t+=(x1!=null&&it.x-x1>Math.max(1.5,cw*0.3)?' ':'')+it.str;x1=it.x+it.w;cw=it.str.length?it.w/it.str.length:5;});units.push({t:t});}
+    if(solto.length)units.push({t:ccJuntaIts(solto)});
   });
   var out=[];
   units.forEach(function(u){
@@ -28910,7 +28939,7 @@ function ccLinhasDeItens(items){
     out.push(u.cab);
     var lin=[];u.its.forEach(function(it){var L=null;for(var i=0;i<lin.length;i++){if(Math.abs(lin[i].y-it.y)<=6){L=lin[i];break;}}if(!L){L={y:it.y,its:[]};lin.push(L);}L.its.push(it);});
     lin.sort(function(a,b){return b.y-a.y;});
-    var txt=lin.map(function(L){L.its.sort(function(a,b){return a.x-b.x;});var t='',x1=null,cw=5;L.its.forEach(function(it){t+=(x1!=null&&it.x-x1>Math.max(1.5,cw*0.3)?' ':'')+it.str;x1=it.x+it.w;cw=it.str.length?it.w/it.str.length:5;});return t;}).join(' ');
+    var txt=lin.map(function(L){L.its.sort(function(a,b){return a.x-b.x;});return ccJuntaIts(L.its);}).join(' ');
     if(txt.trim())out.push('\u0001'+txt);
   });
   return out;
@@ -28949,7 +28978,7 @@ function ccTituloDe(L){
     var t=L[i].trim();if(!re.test(t)||CC_RE_SESS.test(ccNorm(t))||/^\d+\s*[.)]/.test(t))continue;
     var parts=[t];
     for(var j=i+1;j<Math.min(L.length,i+4);j++){var u=L[j].trim();
-      if(!u||/^\d+\s*[.)]/.test(u)||u.split(/\s+/).length>9||u!==u.toUpperCase()||/\d{1,2}h|\d:\d/.test(u))break;parts.push(u);}
+      if(!u||/^(regulamento|programa)\b/i.test(u)||/^\d+\s*[.)]/.test(u)||u.split(/\s+/).length>9||u!==u.toUpperCase()||/\d{1,2}h|\d:\d/.test(u))break;parts.push(u);}
     var tit=parts.join(' ').replace(/\s+/g,' ').split(/[;:]/)[0].trim();
     if(tit===tit.toUpperCase())tit=ccTitleCase(tit);
     return tit.slice(0,140);
