@@ -29352,6 +29352,7 @@ function ccRenderLista(){
       if(t.id==='ccRegLer'){ev.preventDefault();var tx=(gi('ccRegTxt')||{}).value||'';if(!tx.trim()){toast('Cola o texto do programa','error');return;}ccAplicarLeitura(tx.split(/\r?\n/),'texto colado');return;}
       if(t.id==='ccSesAdd'){var ult=CC.sessoes[CC.sessoes.length-1];CC.sessoes.push({id:gid(),jornada:ult?ult.jornada:1,data:ult?ult.data:'',inicio:'',abertura:'',aquecReg:'',provas:[]});CC_SUJO=true;ccRender();return;}
       if(t.id==='ccJuntaEsc'){var n=0;ccNadAtivos().forEach(function(x){if((CC.escSel||[]).indexOf(x.escalao)>=0&&ccJuntarAtleta(x.id))n++;});CC_SUJO=true;ccRender();toast(n+' atleta(s) juntado(s)','success');return;}
+      if((v=t.getAttribute('data-cc-vx'))!=null){CC.viagens.splice(+v,1);CC_SUJO=true;ccRender();return;}
       if(t.id==='ccViaAdd'){var s0=CC.sessoes[0];CC.viagens.push({tipo:CC.viagens.length?'Regresso':'Saída',data:s0?s0.data:'',hora:'',local:''});CC_SUJO=true;ccRender();return;}
       if((v=t.getAttribute('data-cc-esc'))!=null){CC.escSel=CC.escSel||[];var ix=CC.escSel.indexOf(v);if(ix>=0)CC.escSel.splice(ix,1);else CC.escSel.push(v);ccRender();return;}
       if((v=t.getAttribute('data-cc-tr'))!=null){var j=CC.transp.indexOf(v);if(j>=0)CC.transp.splice(j,1);else CC.transp.push(v);CC.transp.sort(function(a,b){return CC_TRANSP.indexOf(a)-CC_TRANSP.indexOf(b);});CC_SUJO=true;ccRender();return;}
