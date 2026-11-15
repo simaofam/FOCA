@@ -34,6 +34,7 @@ textarea{min-height:70px;resize:vertical;font-size:15px}
 .msg.ok{display:block;background:rgba(0,229,160,.12);border:1px solid rgba(0,229,160,.4)}
 .msg.err{display:block;background:rgba(255,79,109,.12);border:1px solid rgba(255,79,109,.4)}
 .lim{margin-top:8px;font-size:13px;color:var(--y)}
+.rl{margin-left:6px;background:transparent;border:1px solid var(--y);color:var(--y);border-radius:8px;padding:3px 8px;font:inherit;font-size:12px}
 .erro{padding:30px 10px;text-align:center;color:var(--wd)}
 .nota{color:var(--wd);font-size:12px;margin-top:12px;line-height:1.45}
 .cont{font-size:13px;color:var(--wd);margin-top:6px}
@@ -65,7 +66,7 @@ function lerTextos(){document.querySelectorAll('[data-com]').forEach(function(i)
   var b=document.getElementById('bem'),m=document.getElementById('mel');if(b)R.bem=b.value;if(m)R.melhorar=m.value;}
 function render(){
   var c=DOC.conv||{},fx=fechado(),h='<div class="card"><h1>'+esc(c.nome||'Competição')+'</h1><div class="sub">'+esc([c.data,c.local].filter(Boolean).join(' · '))+'</div>'
-    +(DOC.limite?'<div class="lim">⏰ '+(fx?'As respostas fecharam em ':'Responde até ')+esc(limLbl(DOC.limite))+'.</div>':'')+'</div>';
+    +(DOC.limite?'<div class="lim">⏰ '+(fx?'As respostas fecharam em ':'Responde até ')+esc(limLbl(DOC.limite))+'.'+(fechado()?' <button type="button" class="rl" id="rl">🔄 Voltar a verificar</button>':'')+'</div>':'')+'</div>';
   var ats=(DOC.atletas||[]).slice().sort(function(a,b){return a.nome.localeCompare(b.nome);});
   h+='<div class="card"><div class="ql">Quem és?</div><select id="eu"><option value="">Escolhe o teu nome…</option>'+ats.map(function(a){var r=DOC.respostas&&DOC.respostas[a.k];return '<option value="'+a.k+'"'+(EU&&EU.k===a.k?' selected':'')+'>'+esc(a.nome)+(r?' ✓':'')+'</option>';}).join('')+'</select></div>';
   if(EU){
@@ -93,6 +94,7 @@ function render(){
     else if((v=this.getAttribute('data-fis'))){R.fisico=+v;}
     var y=window.scrollY;render();window.scrollTo(0,y);});});
   var g=document.getElementById('go');if(g)g.addEventListener('click',enviar);
+  var rl=document.getElementById('rl');if(rl)rl.addEventListener('click',function(){reler(true);});
 }
 function msg(t,ok){var m=document.getElementById('msg');m.className='msg '+(ok?'ok':'err');m.textContent=t;}
 function enviar(){
@@ -106,6 +108,20 @@ function enviar(){
     .then(function(){DOC.respostas=DOC.respostas||{};DOC.respostas[EU.k]=r;render();msg('✅ Obrigado, '+EU.nome.split(' ')[0]+'! A tua reflexão foi enviada ao treinador.',true);})
     .catch(function(err){render();msg('Não foi possível enviar ('+(err&&err.message||err)+'). Verifica a internet e tenta de novo.',false);});
 }
+// Página aberta há algum tempo (separador antigo, browser do WhatsApp): volta a ler a data limite quando
+// a página volta a aparecer, para não ficar «fechada» depois de o treinador mudar a data.
+var ULT=0;
+function reler(forcar){
+  if(!ref||!DOC||(!forcar&&document.visibilityState==='hidden'))return;var t=Date.now();if(!forcar&&t-ULT<5000)return;ULT=t;
+  ref.get().then(function(doc){if(!doc.exists||!doc.data())return;var n=doc.data(),mudou=n.limite!==DOC.limite;
+    if(EU&&R)lerTextos();
+    var resp=DOC.respostas;DOC=n;if(!DOC.respostas)DOC.respostas=resp;
+    if(mudou||forcar){var y=window.scrollY;render();window.scrollTo(0,y);}
+  }).catch(function(){});
+}
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')reler();});
+window.addEventListener('pageshow',function(e){if(e.persisted)reler(true);});
+window.addEventListener('focus',function(){reler();});
 (function(){
   if(!EP||!TK||!/^[a-z0-9]{8,40}$/i.test(TK)||!/^\d{4}-\d{4}$/.test(EP)){document.getElementById('app').innerHTML='<div class="erro">Link inválido. Pede ao treinador um link novo.</div>';return;}
   try{firebase.initializeApp(FB_CONFIG);db=firebase.firestore();}catch(e){document.getElementById('app').innerHTML='<div class="erro">Sem ligação. Tenta mais tarde.</div>';return;}

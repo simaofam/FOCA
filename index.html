@@ -29697,6 +29697,14 @@ function cpTok(n){var c='abcdefghijkmnpqrstuvwxyz23456789',s='';var a=new Uint8A
 function cpDocId(tok){return fbDocId(cs)+'__prv_'+tok;}
 function cpUrl(tok){var base=String(location.href).split('#')[0].split('?')[0].replace(/[^\/]*$/,'');return base+'provas.html?e='+encodeURIComponent(fbDocId(cs))+'&t='+encodeURIComponent(tok);}
 function cpNomeCurto(nome){var w=String(nome||'').trim().split(/\s+/);return w.length>1?w[0]+' '+w[w.length-1]:w[0]||'';}
+// Data limite: não deixa publicar com a data já passada; na reflexão avisa se fecha antes do fim da prova.
+function cpLimiteOk(lim,depoisDaProva){
+  if(!lim)return true;var d=new Date(lim);if(isNaN(d))return true;
+  if(d<=new Date()){toast('A data limite ('+cpLimiteLbl(lim)+') já passou: os atletas não conseguiriam responder. Escolhe uma data futura ou apaga-a.','error');return false;}
+  if(depoisDaProva){var ult=(CC.sessoes||[]).map(function(s){return s.data||'';}).filter(Boolean).sort().pop();
+    if(ult&&lim<ult+'T23:59'&&!confirm('A data limite ('+cpLimiteLbl(lim)+') é antes do fim da prova ('+fd(ult)+'). Os atletas só conseguem responder até essa data, antes de nadarem as últimas provas.\n\nPublicar mesmo assim?'))return false;}
+  return true;
+}
 function cpLimiteLbl(l){if(!l)return '';var d=new Date(l);if(isNaN(d))return l;return d.toLocaleDateString('pt-PT',{weekday:'short',day:'numeric',month:'short'})+' às '+String(d.getHours()).padStart(2,'0')+'h'+String(d.getMinutes()).padStart(2,'0');}
 function cpPayload(){
   var P=CC.prv,mapa={},inv={};
@@ -29717,7 +29725,7 @@ function cpPublicar(){
   if(!CC.atletas.length){toast('Primeiro junta os atletas (secção 3)','error');return;}
   if(typeof fbDB==='undefined'||!fbDB){toast('Sem ligação à cloud: não consigo publicar o link agora','error');return;}
   CC.prv=CC.prv||{token:cpTok(16),mapa:{},limite:''};
-  var lim=gi('cpLimite');if(lim)CC.prv.limite=lim.value||'';
+  var lim=gi('cpLimite');if(lim&&!cpLimiteOk(lim.value,false))return;if(lim)CC.prv.limite=lim.value||'';
   var pl=cpPayload(),bt=gi('cpPub');if(bt){bt.disabled=true;bt.textContent='A publicar…';}
   fbDB.collection('seasons').doc(cpDocId(CC.prv.token)).set(pl,{merge:true}).then(function(){
     CC.prv.publicado=pl.ts;ccGuardar();toast('Página dos atletas publicada','success');cpRenderSec();
@@ -29805,7 +29813,6 @@ function cpRenderSec(){
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wire);else wire();
 })();
-
 </script>
 <!-- CP-FIM -->
 
@@ -30313,7 +30320,8 @@ function rfPublicar(){
   if(!CC)return;if(!CC.nome){toast('Indica o nome da prova (secção 2)','error');return;}
   if(!Object.keys(CC.marcas||{}).length){toast('Primeiro marca as provas de cada atleta na grelha (secção 4)','error');return;}
   if(typeof fbDB==='undefined'||!fbDB){toast('Sem ligação à cloud: não consigo publicar o link agora','error');return;}
-  CC.rfx=CC.rfx||{token:cpTok(16),mapa:{},limite:''};var l=gi('rfLimite');if(l)CC.rfx.limite=l.value||'';
+  var l=gi('rfLimite');if(l&&!cpLimiteOk(l.value,true))return;
+  CC.rfx=CC.rfx||{token:cpTok(16),mapa:{},limite:''};if(l)CC.rfx.limite=l.value||'';
   var pl=rfPayload(),bt=gi('rfPub');if(bt){bt.disabled=true;bt.textContent='A publicar…';}
   fbDB.collection('seasons').doc(rfDocId(CC.rfx.token)).set(pl,{merge:true}).then(function(){CC.rfx.publicado=pl.ts;ccGuardar();toast('Reflexão publicada','success');rfRenderSec();})
     .catch(function(e){console.error(e);toast('Não foi possível publicar: '+e.message,'error');if(bt){bt.disabled=false;bt.textContent='🔗 Publicar';}});
@@ -30402,7 +30410,6 @@ function rfFicha(){
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wire);else wire();
 })();
-
 </script>
 <!-- RF-FIM -->
 <!-- FM-INICIO -->
