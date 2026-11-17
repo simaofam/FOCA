@@ -30356,7 +30356,7 @@ function rfSecHTML(){
     var url=rfUrl(R.token);
     h+='<div style="margin-top:10px;font-size:12px;color:var(--wd)">Publicada '+new Date(R.publicado).toLocaleString('pt-PT',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+(R.limite?' · aceita respostas até '+ccE(cpLimiteLbl(R.limite)):' · sem data limite')+'. Só aparecem os atletas com provas marcadas na grelha.</div>'
       +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center"><input class="fi" readonly id="rfUrlI" value="'+ccE(url)+'" style="flex:1;min-width:200px;font-size:12px"><button class="btn bg bs" id="rfCopiar">📋 Copiar</button><button class="btn bs" id="rfWA" style="background:#25d366;color:#06301a">💬 Enviar por WhatsApp</button></div>'
-      +'<div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 6px"><b>Respostas</b><button class="btn bg bs" id="rfRec">🔄 Ver respostas</button></div>';
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 6px"><b>Respostas</b><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn bg bs" id="rfRec">🔄 Ver respostas</button><button class="btn bp bs" id="rfPDF">🖨️ PDF das respostas</button></div></div>';
     var resp=R.respostas||{},inv={};Object.keys(R.mapa||{}).forEach(function(k){inv[R.mapa[k]]=k;});
     var com=ccAtletasOrd().filter(function(a){return rfProvasAtleta(a.id).length;}),ok=com.filter(function(a){return resp[inv[a.id]];}),falta=com.filter(function(a){return !resp[inv[a.id]];});
     var nomeProva=function(key){var c=cpColDe(key),sid=key.split('~')[0],si=CC.sessoes.findIndex(function(x){return x.id===sid;}),sl=si>=0?ccSessLbl(CC.sessoes[si],si).replace(' jornada · ','J·').replace(' sessão','S')+' · ':'';return sl+(c?((c.est?'4×':'')+c.dist+' '+c.estilo):key);};
@@ -30371,6 +30371,45 @@ function rfRenderSec(){
   if(old){old.outerHTML=html;return;}
   var secs=b.querySelectorAll('.cc-sec'),alvo=null;secs.forEach(function(s){var t=s.querySelector('.cc-h');if(t&&/^6\./.test(t.textContent.trim()))alvo=s;});
   var tmp=document.createElement('div');tmp.innerHTML=html;if(alvo&&alvo.nextSibling)b.insertBefore(tmp.firstChild,alvo.nextSibling);else b.appendChild(tmp.firstChild);
+}
+// ── PDF com todas as respostas (lê primeiro as mais recentes) ──
+function rfNomeProva(key){var c=cpColDe(key),sid=key.split('~')[0],si=CC.sessoes.findIndex(function(x){return x.id===sid;});
+  return {ses:si>=0?ccSessLbl(CC.sessoes[si],si):'',ord:si>=0?si:99,prova:c?((c.est?'4×':'')+c.dist+' '+c.estilo):key};}
+function rfPdfHTML(){
+  var R=CC.rfx||{},resp=R.respostas||{},inv={};Object.keys(R.mapa||{}).forEach(function(k){inv[R.mapa[k]]=k;});
+  var com=ccAtletasOrd().filter(function(a){return rfProvasAtleta(a.id).length;}),ok=com.filter(function(a){return resp[inv[a.id]];}),falta=com.filter(function(a){return !resp[inv[a.id]];});
+  var E=ccE,est=function(n){n=+n||0;return n?'<span style="color:#b45309">'+'★'.repeat(n)+'</span><span style="color:#ccc">'+'★'.repeat(5-n)+'</span>':'—';};
+  var OBJ={sim:'<span style="color:#047857">✔ cumpriu</span>',quase:'<span style="color:#b45309">● quase</span>',nao:'<span style="color:#c0263d">✘ não cumpriu</span>'};
+  var h='<div style="margin-bottom:10px"><b style="font-size:16px">'+E(CC.nome||'')+'</b><br><span style="color:#555">'+E([CC.data,CC.local].filter(Boolean).join(' · '))+'</span><br>'
+    +'<span style="color:#555">Responderam <b>'+ok.length+' de '+com.length+'</b> atletas'+(R.lido?' · respostas lidas a '+new Date(R.lido).toLocaleString('pt-PT',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'')+'</span></div>';
+  // resumo
+  var tot={sim:0,quase:0,nao:0},notas=[],fis=[];
+  var linhas=ok.map(function(a){var r=resp[inv[a.id]],c={sim:0,quase:0,nao:0},st=[];
+    Object.keys(r.provas||{}).forEach(function(k){var p=r.provas[k];if(!p)return;if(c[p.obj]!=null){c[p.obj]++;tot[p.obj]++;}if(+p.sens)st.push(+p.sens);});
+    if(r.nota!=null&&r.nota!=='')notas.push(+r.nota);if(r.fisico)fis.push(+r.fisico);
+    return '<tr><td>'+E(ccNad(a.id).nome)+'</td><td style="text-align:center"><b>'+(r.nota!=null&&r.nota!==''?r.nota+'/10':'—')+'</b></td><td style="text-align:center">'+(r.fisico?r.fisico+'/5':'—')+'</td><td style="text-align:center">'+(st.length?String((st.reduce(function(x,y){return x+y;},0)/st.length).toFixed(1)).replace('.',','):'—')+'</td><td style="text-align:center">'+c.sim+'</td><td style="text-align:center">'+c.quase+'</td><td style="text-align:center">'+c.nao+'</td></tr>';});
+  var med=function(L){return L.length?String((L.reduce(function(x,y){return x+y;},0)/L.length).toFixed(1)).replace('.',','):'—';};
+  if(ok.length)h+='<h3 style="margin:6px 0">Resumo</h3><table class="rf-pt"><thead><tr><th>Atleta</th><th>Nota da competição</th><th>Estado físico</th><th>Sensação média (★)</th><th>Cumpriu</th><th>Quase</th><th>Não cumpriu</th></tr></thead><tbody>'+linhas.join('')
+    +'</tbody><tfoot><tr><td><b>Equipa</b></td><td style="text-align:center"><b>'+med(notas)+'</b></td><td style="text-align:center"><b>'+med(fis)+'</b></td><td></td><td style="text-align:center"><b>'+tot.sim+'</b></td><td style="text-align:center"><b>'+tot.quase+'</b></td><td style="text-align:center"><b>'+tot.nao+'</b></td></tr></tfoot></table>';
+  // por atleta
+  ok.forEach(function(a){var r=resp[inv[a.id]];
+    var ps=Object.keys(r.provas||{}).map(function(k){var p=r.provas[k];if(!p||(!p.sens&&!p.obj&&!p.com))return null;var n=rfNomeProva(k);return {n:n,p:p};}).filter(Boolean).sort(function(x,y){return x.n.ord-y.n.ord;});
+    h+='<div class="rf-pa"><div style="display:flex;justify-content:space-between;gap:8px;border-bottom:2px solid #1a5fb4;padding-bottom:3px;margin-bottom:6px"><b style="font-size:14px">'+E(ccNad(a.id).nome)+'</b><span style="color:#555;font-size:11px">'+(r.ts?'respondeu '+new Date(r.ts).toLocaleString('pt-PT',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'')+'</span></div>'
+      +(ps.length?'<table class="rf-pt"><thead><tr><th>Sessão</th><th>Prova</th><th>Sensação</th><th>Objetivo</th><th>Comentário</th></tr></thead><tbody>'+ps.map(function(x){return '<tr><td style="white-space:nowrap">'+E(x.n.ses)+'</td><td style="white-space:nowrap"><b>'+E(x.n.prova)+'</b></td><td style="white-space:nowrap">'+est(x.p.sens)+'</td><td style="white-space:nowrap">'+(OBJ[x.p.obj]||'—')+'</td><td>'+E(x.p.com||'')+'</td></tr>';}).join('')+'</tbody></table>':'')
+      +'<div style="margin-top:6px">Nota da competição <b>'+(r.nota!=null&&r.nota!==''?r.nota+'/10':'—')+'</b> · Estado físico <b>'+(r.fisico?r.fisico+'/5':'—')+'</b></div>'
+      +(r.bem?'<div style="margin-top:4px"><b>Correu bem:</b> '+E(r.bem)+'</div>':'')
+      +(r.melhorar?'<div style="margin-top:4px"><b>A melhorar:</b> '+E(r.melhorar)+'</div>':'')+'</div>';});
+  if(falta.length)h+='<div style="margin-top:10px;color:#555"><b>Sem resposta ('+falta.length+'):</b> '+falta.map(function(a){return E(ccNad(a.id).nome);}).join(', ')+'</div>';
+  if(!ok.length)h+='<p>Ainda não há respostas.</p>';
+  return '<style>.rf-pt{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:4px}.rf-pt th,.rf-pt td{border:1px solid #d5dde8;padding:3px 5px;vertical-align:top;text-align:left}.rf-pt th{background:#eef3fa}.rf-pt tfoot td{background:#f6f8fb}.rf-pa{margin-top:14px;page-break-inside:avoid;break-inside:avoid}</style>'+h;
+}
+function rfExportPDF(){
+  if(!CC||!CC.rfx||!CC.rfx.publicado){toast('Primeiro publica a reflexão','error');return;}
+  var ir=function(){xpExportar({html:rfPdfHTML(),titulo:'Reflexão pós-competição · '+(CC.nome||''),sub:CC.data||''});};
+  // lê as respostas mais recentes e só depois abre o PDF (se a leitura demorar mais de 3 s, usa as que já tem)
+  var feito=false,b=gi('rfPDF');if(b){b.disabled=true;b.textContent='A preparar…';}
+  var fim=function(){if(feito)return;feito=true;rfRenderSec();ir();};
+  setTimeout(fim,3000);rfLer(fim);
 }
 // ── ficha do nadador: histórico das reflexões ──
 function rfHistorico(nadId){
@@ -30403,6 +30442,7 @@ function rfFicha(){
       if(t.id==='rfPub'){rfPublicar();return;}
       if(t.id==='rfCopiar'){var u=gi('rfUrlI');try{navigator.clipboard.writeText(u.value);}catch(e){u.select();document.execCommand('copy');}toast('Link copiado','success');return;}
       if(t.id==='rfWA'){var txt='📝 *Reflexão pós-competição — '+CC.nome+'*\nConta-nos como correram as tuas provas'+(CC.rfx.limite?' (até '+cpLimiteLbl(CC.rfx.limite)+')':'')+':\n'+rfUrl(CC.rfx.token);window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');return;}
+      if(t.id==='rfPDF'){rfExportPDF();return;}
       if(t.id==='rfRec'){t.disabled=true;t.textContent='A ler…';rfLer(function(ok){if(!ok)toast('Não consegui ler as respostas (sem ligação?)','error');rfRenderSec();});return;}
     });
     m.addEventListener('change',function(ev){if(ev.target.id==='rfLimite'&&CC){CC.rfx=CC.rfx||{token:cpTok(16),mapa:{},limite:''};CC.rfx.limite=ev.target.value||'';CC_SUJO=true;}});
@@ -30410,6 +30450,8 @@ function rfFicha(){
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wire);else wire();
 })();
+
+if(typeof WA_ALVOS!=='undefined')WA_ALVOS.push({id:'rfPDF',fn:'rfExportPDF',nome:'reflexao_pos_competicao',rot:'Reflexão pós-competição',txt:1});
 </script>
 <!-- RF-FIM -->
 <!-- FM-INICIO -->
