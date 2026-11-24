@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pt-PT"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FOCA · Recuperar cópia local</title>
+<style>
+:root{--d:#0a1628;--m:#0d2240;--s:#103460;--a:#00c2ff;--g:#f5c842;--w:#f0f6ff;--wd:rgba(240,246,255,.65);--r:#ff4f6d;--gr:#00e5a0}
+*{box-sizing:border-box}body{margin:0;background:var(--d);color:var(--w);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.45}
+header{background:linear-gradient(135deg,var(--m),var(--s));padding:18px 16px;border-bottom:3px solid var(--g)}
+header small{color:var(--g);letter-spacing:2px;font-weight:700;font-size:11px}header h1{margin:4px 0 0;font-size:22px}
+main{max-width:760px;margin:0 auto;padding:16px}
+.c{background:var(--m);border:1px solid rgba(0,194,255,.2);border-radius:12px;padding:14px;margin-bottom:12px}
+.c h2{margin:0 0 6px;font-size:17px}.k{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:10px 0}
+.k div{background:rgba(255,255,255,.05);border-radius:8px;padding:8px}.k b{display:block;font-size:18px}.k span{font-size:12px;color:var(--wd)}
+.btn{display:inline-block;border:0;border-radius:9px;padding:10px 14px;font:inherit;font-weight:600;cursor:pointer;background:var(--a);color:#00131f}
+.w{background:rgba(245,200,66,.12);border-left:3px solid var(--g);padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:14px}
+.ok{color:var(--gr)}.no{color:var(--r)}ul{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--wd)}
+</style></head><body>
+<header><small>CLUBE DE NATAÇÃO DE FELGUEIRAS · FOCA</small><h1>Recuperar a cópia guardada neste aparelho</h1></header>
+<main>
+<div class="w">Esta página <b>só lê</b> a cópia da FOCA que ficou guardada neste browser. Não liga à cloud e não altera nada. Descarrega o ficheiro e envia-o ao Simão.</div>
+<div id="out">A ler…</div>
+</main>
+<script>
+(function(){
+  function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  function fd(iso){if(!iso)return '—';var p=String(iso).slice(0,10).split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:iso;}
+  var out=document.getElementById('out'),h='',n=0;
+  var chaves=[];try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(/^ap-\d{4}_\d{4}$/.test(k))chaves.push(k);}}catch(e){out.innerHTML='<div class="c no">Este browser não deixa ler a cópia local ('+esc(e.message)+').</div>';return;}
+  chaves.sort().reverse();
+  chaves.forEach(function(k){
+    var raw=localStorage.getItem(k),d;try{d=JSON.parse(raw);}catch(e){return;}
+    if(!d||typeof d!=='object')return;n++;
+    var ep=k.slice(3).replace('_','/'),S=d.sessoes||[],hoje=new Date().toISOString().slice(0,10);
+    // a data mais recente de qualquer coisa registada: indica até quando esta cópia está atualizada
+    var datas=[];
+    S.forEach(function(s){if(s&&s.data&&s.data<=hoje)datas.push(s.data);});
+    function upd(L){(L||[]).forEach(function(x){if(x&&(x.updatedAt||x.createdAt))datas.push(String(x.updatedAt||x.createdAt).slice(0,10));});}
+    ['registosTreino','avaliacoesSerie','convocatorias','convocatoriasComp','avisos','bemEstar','competicoes'].forEach(function(c){upd(d[c]);});
+    datas.sort();var ult=datas.length?datas[datas.length-1]:'';
+    var pres=S.filter(function(s){return s&&s.presencas&&s.presencas.some(function(p){return p&&p.estado==='presente';});}).map(function(s){return s.data||'';}).sort();
+    var cv=(d.convocatorias||[]).map(function(c){return (c.updatedAt||c.createdAt||c.data||'').slice(0,10);}).sort();
+    h+='<div class="c"><h2>Época '+esc(ep)+'</h2>'
+      +'<div class="k"><div><b>'+S.length+'</b><span>sessões de treino</span></div><div><b>'+(d.nadadores||[]).length+'</b><span>nadadores</span></div><div><b>'+(d.convocatorias||[]).length+'</b><span>convocatórias de treino</span></div><div><b>'+(d.registosTreino||[]).length+'</b><span>registos de treino</span></div></div>'
+      +'<ul><li>Última alteração registada: <b class="ok">'+fd(ult)+'</b></li><li>Última sessão com presenças marcadas: '+fd(pres[pres.length-1])+'</li><li>Convocatória de treino mais recente: '+fd(cv[cv.length-1])+'</li><li>Tamanho: '+Math.round(raw.length/1024)+' KB</li></ul>'
+      +'<p><button class="btn" data-k="'+esc(k)+'">⬇️ Descarregar cópia '+esc(ep)+'</button></p></div>';
+  });
+  if(!n)h='<div class="c">Não há nenhuma cópia da FOCA guardada neste browser.</div>';
+  out.innerHTML=h;
+  out.addEventListener('click',function(ev){var b=ev.target.closest('[data-k]');if(!b)return;var k=b.getAttribute('data-k'),ep=k.slice(3).replace('_','/');
+    var raw=localStorage.getItem(k),agora=new Date(),st=agora.toISOString().slice(0,16).replace(/[-:T]/g,'');
+    var blob=new Blob(['{"season":'+JSON.stringify(ep)+',"origem":"copia-local","lida":'+JSON.stringify(agora.toISOString())+',"data":'+raw+'}'],{type:'application/json'});
+    var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='foca-'+k.slice(3)+'-copia-local-'+st+'.json';document.body.appendChild(a);a.click();setTimeout(function(){a.remove();},500);
+    b.textContent='✅ Descarregado';});
+})();
+</script>
+</body></html>
