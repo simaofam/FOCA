@@ -2907,6 +2907,94 @@ var LZString=function(){var r=String.fromCharCode,o="ABCDEFGHIJKLMNOPQRSTUVWXYZa
 var FB_Z_SUFIXO='__z';
 function fbRef(seasonKey){ return fbDB.collection('seasons').doc(fbDocId(seasonKey)+FB_Z_SUFIXO); }
 function fbRefLegado(seasonKey){ return fbDB.collection('seasons').doc(fbDocId(seasonKey)); }
+// ═══ GRAVAÇÃO SEGURA (Nov 2026) ══════════════════════════════════════════
+// Perda de dados de 23/24 Nov: um aparelho com dados antigos (FOCA acabada de abrir, ainda a
+// carregar a cloud, ou uma página parada há dias) gravava a época inteira por cima da cloud.
+// Agora cada gravação tem um número de revisão, guardado em 'seasons/<época>__rev'.
+//  • FB_BASE[época] = revisão que este aparelho carregou (undefined = ainda não carregou nada da cloud).
+//  • fbWrite só grava se a revisão na cloud ainda for a que este aparelho conhece; senão pergunta.
+//  • Antes da 1.ª gravação de cada dia guarda uma cópia da cloud em 'seasons/<época>__bk_AAAA-MM-DD'
+//    (últimos 14 dias), que se pode restaurar em 🔧 → 💾 Cópias de segurança.
+var FB_BASE={}, FB_ULT={};
+var FB_DISP=(function(){try{var d=localStorage.getItem('foca-disp');if(!d){d=(/Mobi|Android|iPhone/i.test(navigator.userAgent)?'telemóvel':'computador')+'-'+Math.random().toString(36).slice(2,6);localStorage.setItem('foca-disp',d);}return d;}catch(e){return 'aparelho';}})();
+function fbRevRef(seasonKey){ return fbDB.collection('seasons').doc(fbDocId(seasonKey)+'__rev'); }
+function fbBkRef(seasonKey,dia){ return fbDB.collection('seasons').doc(fbDocId(seasonKey)+'__bk_'+dia); }
+function fbHojeLx(){ try{ return new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Lisbon'}); }catch(e){ return new Date().toISOString().slice(0,10); } }
+function fbMarcarBase(seasonKey,data){ FB_BASE[seasonKey]=(data&&typeof data.rev==='number')?data.rev:'x'; if(data&&data._fz) FB_ULT[seasonKey]=data; }
+function fbWrite(payload,forcar){
+  var s=cs, base=FB_BASE[s], hoje=fbHojeLx(), ant=FB_ULT[s]||null;
+  if(base===undefined&&!forcar){ var e0=new Error('A FOCA ainda não carregou os dados da cloud'); e0.foca='naoSinc'; return Promise.reject(e0); }
+  return fbDB.runTransaction(function(t){
+    return t.get(fbRevRef(s)).then(function(r){
+      var R=r.exists?(r.data()||{}):{}, n=R.n||0;
+      if(!forcar&&typeof base==='number'&&n!==base){ var e=new Error('conflito'); e.foca='conflito'; e.remoto=R; throw e; }
+      if(!forcar&&base==='x'&&n>0&&!(ant&&typeof ant.rev!=='number')){ var e2=new Error('conflito'); e2.foca='conflito'; e2.remoto=R; throw e2; }
+      payload.rev=n+1; payload.disp=FB_DISP;
+      var novo={n:n+1, ts:payload.ts||Date.now(), disp:FB_DISP, bkDia:R.bkDia||'', bks:(R.bks||[]).slice()};
+      if(R.bkDia!==hoje){
+        var bk=(ant&&ant._fz)?ant:payload;
+        t.set(fbBkRef(s,hoje), Object.assign({},bk,{bkDe:hoje, bkTs:Date.now()}));
+        novo.bkDia=hoje; novo.bks=novo.bks.filter(function(d){return d!==hoje;}).concat([hoje]).sort();
+        while(novo.bks.length>14){ t.delete(fbBkRef(s,novo.bks.shift())); }
+      }
+      t.set(fbRef(s),payload); t.set(fbRevRef(s),novo);
+      return novo.n;
+    });
+  }).then(function(n){ FB_BASE[s]=n; FB_ULT[s]=payload; return n; });
+}
+// aplica dados vindos da cloud neste aparelho (mesma lógica do fbListen)
+function fbAplicar(remote){
+  if(!remote) return;
+  var _draftPres={};try{(D.sessoes||[]).forEach(function(s){ if(s&&s._presTemp)_draftPres[s.id]=s._presTemp; });}catch(e){}
+  D=remote;
+  ['competicoes','sessoes','nadadores','objetivos','horarios','horariosPontuais','convocatorias','treinosTipo'].forEach(function(k){ if(!D[k])D[k]=[]; });
+  if(!D.planeamentos)D.planeamentos={};
+  try{ D.sessoes.forEach(function(s){ if(s&&_draftPres[s.id])s._presTemp=_draftPres[s.id]; }); }catch(e){}
+  localStorage.setItem(sk(cs),JSON.stringify(D));
+  try{ rDash&&rDash();rCLst&&rCLst();rNLst&&rNLst();rSLst&&rSLst();rOLst&&rOLst();rWk&&rWk(); }catch(e){ console.warn('refresh:',e); }
+}
+function fbRecarregarCloud(msg){
+  showSyncStatus('☁️ A carregar da cloud...','syncing');
+  return fbLoad(cs).then(function(rd){ if(rd){ fbAplicar(rd); showSyncStatus('☁️ Sincronizado','synced'); if(msg) try{toast(msg,'info');}catch(_){} } else showSyncStatus('☁️ Erro a ler a cloud','error'); });
+}
+var FB_AVISOU_NS=0;
+function fbErroGravar(err,payload){
+  if(err&&err.foca==='naoSinc'){
+    showSyncStatus('☁️ À espera da cloud','error');
+    if(Date.now()-FB_AVISOU_NS>8000){ FB_AVISOU_NS=Date.now(); try{toast('A FOCA ainda está a carregar os dados da cloud. Esta alteração não foi enviada: espera pelo «☁️ Sincronizado» e repete-a.','error');}catch(_){} }
+    return;
+  }
+  if(err&&err.foca==='conflito'){ fbConflito(err,payload); return; }
+  console.error('fbSave error:',err);
+  showSyncStatus('☁️ Erro: '+(err&&(err.code||err.message)||'?'),'error');
+}
+function fbConflito(err,payload){
+  showSyncStatus('☁️ Dados mais recentes na cloud','error');
+  var R=err.remoto||{}, quando=R.ts?new Date(R.ts).toLocaleString('pt-PT',{weekday:'long',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+  var html='<div style="font-size:13px;line-height:1.6"><p>Outro aparelho'+(R.disp?' (<b>'+String(R.disp).replace(/[<>&]/g,'')+'</b>)':'')+' gravou dados na cloud'+(quando?' <b>'+quando+'</b>':'')+', depois de este aparelho os ter carregado.</p>'
+    +'<p>Para não apagar esse trabalho, <b>a alteração feita aqui não foi enviada</b>.</p>'
+    +'<p style="color:var(--wd)">Recomendado: carregar os dados da cloud e repetir a alteração.</p></div>';
+  showCustomModal('⚠️ Há dados mais recentes na cloud', html, [
+    {label:'☁️ Carregar a cloud (recomendado)', primary:true, action:function(){ fbRecarregarCloud('Dados atualizados. Repete a alteração que estavas a fazer.'); }},
+    {label:'Substituir a cloud pelos deste aparelho', action:function(){
+      if(!confirm('Tens a certeza? O que foi gravado no outro aparelho é substituído pelos dados deste aparelho.'))return;
+      showSyncStatus('☁️ A enviar...','syncing');
+      (payload?Promise.resolve(payload):fbEncode(D)).then(function(p){ return fbWrite(p,true); }).then(function(){ showSyncStatus('☁️ Guardado','synced'); }).catch(function(e){ fbErroGravar(e); });
+    }}
+  ]);
+}
+// página que esteve parada (separador em segundo plano, telemóvel bloqueado): ao voltar, verifica a cloud
+var FB_ESCONDIDA=0;
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState==='hidden'){ FB_ESCONDIDA=Date.now(); return; }
+  if(!fbReady||!fbDB||!FB_ESCONDIDA||Date.now()-FB_ESCONDIDA<30000) return;
+  FB_ESCONDIDA=0; var s=cs, base=FB_BASE[s];
+  if(base===undefined) return;
+  fbRevRef(s).get({source:'server'}).then(function(r){
+    var n=r.exists?(r.data().n||0):0;
+    if(s===cs&&typeof base==='number'&&n!==base) fbRecarregarCloud('☁️ Havia alterações de outro aparelho: dados atualizados.');
+  }).catch(function(){});
+});
 function fbB64(u8){ var s='',CH=0x8000; for(var i=0;i<u8.length;i+=CH){ s+=String.fromCharCode.apply(null,u8.subarray(i,i+CH)); } return btoa(s); }
 function fbUnB64(b){ var s=atob(b), u=new Uint8Array(s.length); for(var i=0;i<s.length;i++) u[i]=s.charCodeAt(i); return u; }
 function fbEncode(obj){
@@ -3051,7 +3139,7 @@ function initFirebase(retries){
           if(localCount > 0){
             console.log('Uploading local data to cloud ('+localCount+' items)');
             showSyncStatus('☁️ A enviar para cloud...','syncing');
-            fbEncode(D).then(function(p){ return fbRef(cs).set(p); }).then(function(){
+            fbEncode(D).then(function(p){ return fbWrite(p); }).then(function(){
               showSyncStatus('☁️ Sincronizado','synced');
               fbListen(cs);
             }).catch(function(err){
@@ -3116,12 +3204,10 @@ function fbSave(){
   fbSaveTimeout = setTimeout(function(){
     showSyncStatus('☁️ A guardar...','syncing');
     try {
-      fbEncode(D).then(function(p){ return fbRef(cs).set(p); }).then(function(){
+      var _p=null;
+      fbEncode(D).then(function(p){ _p=p; return fbWrite(p); }).then(function(){
         showSyncStatus('☁️ Guardado','synced');
-      }).catch(function(err){
-        console.error('fbSave error:',err);
-        showSyncStatus('☁️ Erro: '+(err.code||err.message||'?'),'error');
-      });
+      }).catch(function(err){ fbErroGravar(err,_p); });
     } catch(e){
       console.error('fbSave exception:',e);
       showSyncStatus('☁️ Erro: '+e.message,'error');
@@ -3199,7 +3285,7 @@ function fbSyncNow(){
     return;
   }
   showSyncStatus('☁️ A verificar...','syncing');
-  fbRef(cs).get({source:'server'}).then(function(doc){ return fbDecode(doc.exists ? doc.data() : null); }).then(function(remote){
+  fbRef(cs).get({source:'server'}).then(function(doc){ if(doc.exists) fbMarcarBase(cs,doc.data()); else FB_BASE[cs]='x'; return fbDecode(doc.exists ? doc.data() : null); }).then(function(remote){
 
     var localCount = (D.nadadores||[]).length + (D.competicoes||[]).length + (D.sessoes||[]).length + (D.objetivos||[]).length;
     var remoteCount = remote ? ((remote.nadadores||[]).length + (remote.competicoes||[]).length + (remote.sessoes||[]).length + (remote.objetivos||[]).length) : 0;
@@ -3255,7 +3341,7 @@ function fbSyncNow(){
 function fbPushNow(){
   showSyncStatus('☁️ A enviar...','syncing');
   try {
-    fbEncode(D).then(function(p){ return fbRef(cs).set(p); }).then(function(){
+    fbEncode(D).then(function(p){ return fbWrite(p,true); }).then(function(){
       showSyncStatus('☁️ Enviado para cloud','synced');
       try{toast('Dados enviados para a cloud','success');}catch(_){}
     }).catch(function(err){
@@ -3275,6 +3361,35 @@ function fbPushNow(){
 // (leitura direta ao servidor, sem cache), para se conseguir ver de forma
 // inequívoca onde está a diferença, em vez de adivinhar pelo que aparece no
 // ecrã normal da app.
+// ── 💾 cópias de segurança diárias: listar e restaurar ──
+function fbCopiasUI(){
+  if(!fbReady||!fbDB){ toast('Cloud não conectado','error'); return; }
+  fbRevRef(cs).get({source:'server'}).then(function(r){
+    var R=r.exists?r.data():{}, L=(R.bks||[]).slice().reverse();
+    var html='<div style="font-size:13px;line-height:1.6"><p>Cópia da cloud guardada <b>antes da primeira alteração de cada dia</b> (últimos 14 dias), época '+cs+'.</p>'
+      +(L.length?L.map(function(d){var p=d.split('-');return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--b)"><span>'+p[2]+'/'+p[1]+'/'+p[0]+'</span><button class="btn bg bs" data-fbbk="'+d+'">↩️ Restaurar</button></div>';}).join(''):'<p style="color:var(--wd)">Ainda não há cópias: a primeira é feita na próxima alteração.</p>')+'</div>';
+    showCustomModal('💾 Cópias de segurança', html, [{label:'Fechar'}]);
+    var m=gi('mCustom'); if(m) m.addEventListener('click',function(ev){ var b=ev.target.closest('[data-fbbk]'); if(b) fbRestaurar(b.getAttribute('data-fbbk')); });
+  }).catch(function(e){ toast('Erro a ler as cópias: '+(e.code||e.message),'error'); });
+}
+function fbRestaurar(dia){
+  fbBkRef(cs,dia).get({source:'server'}).then(function(doc){
+    if(!doc.exists){ toast('Cópia não encontrada','error'); return; }
+    var raw=doc.data(); return fbDecode(raw).then(function(d){
+      var n=function(o){return {s:(o.sessoes||[]).length,n:(o.nadadores||[]).length,c:(o.convocatorias||[]).length};}, a=n(D), b=n(d), p=dia.split('-');
+      var quando=raw.bkTs?new Date(raw.bkTs).toLocaleString('pt-PT',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):p[2]+'/'+p[1];
+      var html='<div style="font-size:13px;line-height:1.6"><p>Restaurar a cópia de <b>'+p[2]+'/'+p[1]+'/'+p[0]+'</b> (guardada '+quando+').</p>'
+        +'<table style="width:100%;border-collapse:collapse;font-size:13px"><tr><th></th><th>Agora</th><th>Cópia</th></tr><tr><td>Sessões de treino</td><td>'+a.s+'</td><td><b>'+b.s+'</b></td></tr><tr><td>Nadadores</td><td>'+a.n+'</td><td><b>'+b.n+'</b></td></tr><tr><td>Convocatórias de treino</td><td>'+a.c+'</td><td><b>'+b.c+'</b></td></tr></table>'
+        +'<p style="color:#f59e0b;margin-top:10px">⚠️ Tudo o que foi feito depois desta cópia deixa de aparecer.</p></div>';
+      showCustomModal('↩️ Restaurar cópia', html, [
+        {label:'↩️ Restaurar', primary:true, action:function(){
+          showSyncStatus('☁️ A restaurar...','syncing');
+          fbAplicar(d);
+          fbEncode(D).then(function(pl){ return fbWrite(pl,true); }).then(function(){ showSyncStatus('☁️ Guardado','synced'); toast('Cópia de '+p[2]+'/'+p[1]+' restaurada','success'); }).catch(function(e){ fbErroGravar(e); });
+        }},{label:'Cancelar'}]);
+    });
+  }).catch(function(e){ toast('Erro: '+(e.code||e.message),'error'); });
+}
 function showSyncDiagnostics(){
   function sessInfo(list){
     list = list||[];
@@ -3294,7 +3409,8 @@ function showSyncDiagnostics(){
     +'<b>Sessões 21–27 Set (este dispositivo):</b><br>'+(localInfo.semanaAlvo.length?localInfo.semanaAlvo.join('<br>'):'<i>nenhuma</i>')
     +'<div id="diagCloudPart" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--b)">A ler a cloud agora mesmo…</div>'
     +'</div>';
-  showCustomModal('🔧 Diagnóstico de Sincronização', html, [{label:'Fechar'}]);
+  html=html.replace('<b>fbReady:</b> '+fbReady+'<br>','<b>fbReady:</b> '+fbReady+'<br><b>Revisão carregada:</b> '+(FB_BASE[cs]===undefined?'ainda não carregou':FB_BASE[cs])+' · aparelho '+FB_DISP+'<br>');
+  showCustomModal('🔧 Diagnóstico de Sincronização', html, [{label:'💾 Cópias de segurança', primary:true, action:function(){ setTimeout(fbCopiasUI,50); }},{label:'Fechar'}]);
 
   if(fbReady && fbDB){
     fbRef(cs).get({source:'server'}).then(function(doc){
@@ -3321,8 +3437,9 @@ function showSyncDiagnostics(){
 function fbLoad(seasonKey){
   return new Promise(function(resolve,reject){
     if(!fbReady||!fbDB){resolve(null);return;}
-    fbRef(seasonKey).get().then(function(doc){
-      if(doc.exists) return fbDecode(doc.data());
+    fbRef(seasonKey).get({source:'server'}).then(function(doc){
+      if(doc.exists){ fbMarcarBase(seasonKey,doc.data()); return fbDecode(doc.data()); }
+      FB_BASE[seasonKey]='x';
       // Ainda não migrado: ler o documento antigo (fica intacto) e gravar já no formato novo
       return fbRefLegado(seasonKey).get().then(function(old){
         if(!old.exists) return null;
@@ -3347,7 +3464,8 @@ function fbListen(seasonKey){
   if(fbUnsubscribe) fbUnsubscribe();
   fbUnsubscribe = fbRef(seasonKey).onSnapshot(function(doc){
     if(doc.metadata.hasPendingWrites) return; // ignore our own writes
-    if(doc.exists){ fbDecode(doc.data()).then(function(remote){
+    if(doc.exists){ var _raw=doc.data(); fbDecode(_raw).then(function(remote){
+      if(seasonKey===cs) fbMarcarBase(seasonKey,_raw);
       // Only update if remote differs from local
       if(JSON.stringify(remote) !== JSON.stringify(D)){
         // Safety check: don't overwrite local data with empty remote
